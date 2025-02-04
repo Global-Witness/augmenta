@@ -13,16 +13,21 @@ Install this library using `pip`:
 ```bash
 pip install augmenta
 ```
+
 ## Usage
 
 Normal run: augmenta config.yaml
+
 Disable cache: augmenta config.yaml --no-cache
+
 Resume process: augmenta config.yaml --resume PROCESS_ID
+
 Clean old cache: augmenta config.yaml --clean-cache
 
 ## Development
 
 To contribute to this library, first checkout the code. Then create a new virtual environment:
+
 ```bash
 cd augmenta
 python -m venv venv
@@ -36,13 +41,14 @@ python -m pip install -e '.[test]'
 ```
 
 To run the tests:
+
 ```bash
 python -m pytest
 ```
 
 
-# To-do
-- [ ] Refactor to async (use `aiohttp` for requests)
+## To-do
+- [x] Refactor to async (use `aiohttp` for requests)
 - [x] Caching (for resuming interrupted augmentations) using SQLite
   - [ ] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
@@ -56,7 +62,7 @@ python -m pytest
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Scrape via proxy (oxylabs)
 
-# Nice to have
+### Nice to have
 - [ ] Add support for PDFs and other file types?
 - [ ] Keep logs (maybe as an option in the CLI?)
 - [ ] Abstract examples in the YAML, add XML function

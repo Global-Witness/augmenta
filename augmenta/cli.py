@@ -1,5 +1,6 @@
 import click
 import os
+import asyncio
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache import CacheManager
 
@@ -29,7 +30,8 @@ def prompt_for_api_keys():
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--resume', help='Resume a previous process using its ID')
 @click.option('--clean-cache', is_flag=True, help='Clean up old cache entries')
-def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
+@click.option('--max-concurrent', default=3, help='Maximum number of concurrent tasks')
+def main(config_path, verbose, interactive, no_cache, resume, clean_cache, max_concurrent):
     """
     Augmenta CLI tool for processing data using LLMs.
     
@@ -58,14 +60,16 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
             def progress_callback(current: int, total: int, query: str):
                 nonlocal current_query
                 current_query = f"Current query: {query}"
-                bar.update(current / total * 100 - bar.pos)
+                bar.update(round(current / total * 100 - bar.pos, 1))
 
-            _, process_id = process_augmenta(
+            # Run the async process
+            _, process_id = asyncio.run(process_augmenta(
                 config_path,
                 cache_enabled=not no_cache,
                 process_id=resume,
+                max_concurrent=max_concurrent,
                 progress_callback=progress_callback
-            )
+            ))
 
         if verbose:
             click.echo("\nProcessing completed successfully!")

@@ -3,9 +3,8 @@ import json
 import os
 import pandas as pd
 import hashlib
+import asyncio
 from typing import Optional, Tuple, Dict, Any, Callable
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from threading import Lock
 from augmenta.core.search import search_web
 from augmenta.core.extract_text import extract_urls
 from augmenta.core.prompt import prepare_docs
@@ -23,7 +22,6 @@ def get_api_keys(config_data):
         "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY"),
     }
     
-    # If keys exist in config, use them as fallback
     if "api_keys" in config_data:
         for key_name, value in keys.items():
             if value is None:
@@ -42,63 +40,48 @@ def validate_api_keys(keys):
         )
 
 def get_config_hash(config_data: dict) -> str:
-    """
-    Generate a hash of the config data to uniquely identify the configuration.
-    
-    Args:
-        config_data (dict): The configuration dictionary
-        
-    Returns:
-        str: A hex digest of the configuration hash
-    """
+    """Generate a hash of the config data to uniquely identify the configuration."""
     return hashlib.sha256(
         json.dumps(config_data, sort_keys=True).encode()
     ).hexdigest()
 
-def process_row(
+async def process_row(
     row_data: Dict[str, Any],
     config_data: dict,
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
-    cache_lock: Optional[Lock] = None,
     progress_callback: Optional[Callable[[str], None]] = None
 ) -> Tuple[int, Optional[Dict[str, Any]]]:
     """
-    Process a single row of data.
-    
-    Args:
-        # ... existing args ...
-        progress_callback: Optional callback function to report progress
+    Process a single row of data asynchronously.
     """
     index = row_data['index']
     row = row_data['data']
     
     try:
         query = row[config_data['query_col']]
-        if progress_callback:
-            progress_callback(query)
-        prompt_user = config_data["prompt"]["user"].replace("{{research_keyword}}", query)
         
         # Get search results
-        urls = search_web(
+        urls = await search_web(
             query, 
             results=config_data["search"]["results"], 
             engine=config_data["search"]["engine"]
         )
         
         # Extract text from URLs
-        urls_text = extract_urls(urls)
+        urls_text = await extract_urls(urls)
         
         # Prepare documents for processing
         urls_docs = prepare_docs(urls_text)
         
+        prompt_user = config_data["prompt"]["user"].replace("{{research_keyword}}", query)
         prompt_user = f'{urls_docs}\n\n{prompt_user}'
         
         # Create a Pydantic class for the structured output
         Structure = create_structure_class(config_data["config_path"])
         
         # Make the LLM request
-        response = make_request_llm(
+        response = await make_request_llm(
             prompt_system=config_data["prompt"]["system"], 
             prompt_user=prompt_user, 
             model=config_data["model"],
@@ -110,33 +93,38 @@ def process_row(
         
         # Cache the result if enabled
         if cache_manager and process_id:
-            with cache_lock:
-                cache_manager.cache_result(
-                    process_id,
-                    index,
-                    query,
-                    json.dumps(response_dict)
-                )
+            cache_manager.cache_result(
+                process_id,
+                index,
+                query,
+                json.dumps(response_dict)
+            )
         
+        # Only call progress callback after everything is complete
+        if progress_callback:
+            progress_callback(query)
+            
         return index, response_dict
         
     except Exception as e:
         print(f"Error processing row {index}: {e}")
         return index, None
 
-def process_augmenta(
+async def process_augmenta(
     config_path: str, 
     cache_enabled: bool = True, 
     process_id: Optional[str] = None,
-    max_workers: int = 1,
+    max_concurrent: int = 3,
     progress_callback: Optional[Callable[[int, int, str], None]] = None
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """
+    Process data asynchronously using the Augmenta pipeline.
+    
     Args:
         config_path (str): Path to the YAML config file
         cache_enabled (bool): Whether to enable caching
         process_id (str, optional): Process ID for resuming a previous run
-        max_workers (int): Maximum number of worker threads
+        max_concurrent (int): Maximum number of concurrent tasks
         progress_callback: Optional callback for progress updates
         
     Returns:
@@ -145,7 +133,7 @@ def process_augmenta(
     # Import config values
     with open(config_path, 'r') as f:
         config_data = yaml.safe_load(f)
-        config_data["config_path"] = config_path  # Add config path to config data
+        config_data["config_path"] = config_path
         
     # Get and validate API keys
     api_keys = get_api_keys(config_data)
@@ -158,7 +146,6 @@ def process_augmenta(
     input_csv = config_data.get("input_csv")
     output_csv = config_data.get("output_csv")
     query_col = config_data.get("query_col")
-    max_workers = config_data.get("max_workers", 1)
     
     if not input_csv or not query_col:
         raise ValueError("input_csv and query_col must be specified in the config file")
@@ -172,17 +159,14 @@ def process_augmenta(
     # Initialize cache and get cached results if enabled
     cache_manager = None
     cached_results = {}
-    cache_lock = Lock()
     
     if cache_enabled:
         cache_manager = CacheManager()
         config_hash = get_config_hash(config_data)
         
         if process_id is None:
-            # Start new process
             process_id = cache_manager.start_process(config_hash, len(df))
         
-        # Get cached results
         cached_results = cache_manager.get_cached_results(process_id)
         
         # Apply cached results to DataFrame
@@ -199,7 +183,6 @@ def process_augmenta(
                 'data': row
             })
 
-
     total_rows = len(rows_to_process)
     processed_rows = 0
 
@@ -209,28 +192,29 @@ def process_augmenta(
         if progress_callback:
             progress_callback(processed_rows, total_rows, query)
 
-    # Process rows in parallel
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_row = {
-            executor.submit(
-                process_row,
+    # Process rows with concurrency limit
+    results = []
+    
+    for i in range(0, len(rows_to_process), max_concurrent):
+        batch = rows_to_process[i:i + max_concurrent]
+        batch_tasks = [
+            process_row(
                 row_data=row,
                 config_data=config_data,
                 cache_manager=cache_manager,
                 process_id=process_id,
-                cache_lock=cache_lock,
                 progress_callback=update_progress
-            ): row for row in rows_to_process
-        }
+            ) for row in batch
+        ]
         
-        for future in as_completed(future_to_row):
-            try:
-                index, result = future.result()
-                if result:
-                    for key, value in result.items():
-                        df.at[index, key] = value
-            except Exception as e:
-                print(f"Error processing future: {e}")
+        batch_results = await asyncio.gather(*batch_tasks)
+        results.extend(batch_results)
+
+    # Update DataFrame with results
+    for index, result in results:
+        if result:
+            for key, value in result.items():
+                df.at[index, key] = value
 
     # Save the results back to a CSV
     if output_csv:
