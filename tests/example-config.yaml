@@ -1,0 +1,124 @@
+input_csv: "tests/test-data-input.csv"
+output_csv: tests/test-data-output.csv
+model: openai/gpt-4o-mini
+# token_limit: 20000
+query_col: org_name
+search:
+  engine: brave
+  results: 1
+prompt:
+  system: You are an expert researcher whose job is to identify fossil fuel companies and trade groups. You will be provided a collection of documents collected from Google search results. You will determine whether that organization is a fossil fuel company or trade group.
+  user: |
+    # Instructions
+
+    The documents above contain information extracted from a Google search for "{{research_keyword}}". Your task is to determine whether "{{research_keyword}}" is a fossil fuel company or trade group. Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English, even if the original content is not in English.
+
+    # Definition
+
+    A fossil fuel organization can be either:
+    - A *company* with significant business activities in the exploration, extraction, refining, trading, specialized transportation of oil, gas, coal, or blue hydrogen, or sale of electricity derived from them. This includes companies that:
+      - Have regular and significant business activities involving fossil fuels, like producing or selling them, regardless of plans to divest in the future.
+      - Have significant fossil fuel operations and subsidiaries, even if they also have other activities. Mining giant Vale and chemicals producer BASF are fossil fuel organizations.
+      - Are owned by a government, for example Sonangol, SOCAR. However, this doesn't include the governments themselves, or ministries, agencies, departments, etc.
+      - Transport fossil fuels, for example the Kenya Pipeline Company.
+      - Produce electricity or hydrogen from fossil fuels. Example: Enel Foundation.
+      - Sell energy produced from fossil fuels (e.g., Octopus Energy).
+      - Carbon capture and carbon trading companies owned by fossil fuel companies, or who promote using fossil fuels.
+    - A *trade group* that advocates for the fossil fuels industry if:
+      - Fossil fuel companies are significantly involved and/or have leadership positions.
+      - The association publicly states its goal to represent the fossil fuels industry.
+      - The association has historically lobbied for fossil fuel interests.
+
+    There are some organizations that have links to the fossil fuel industry but are NOT considered fossil fuel organizations under the definition you're using:
+    - Investors, pension funds or banks that invest in fossil fuel companies, but don't extract, process or trade it directly.
+    - Educational institutions (universities, research centers) that receive funding from fossil fuel companies or study the industry.
+    - Consulting or advising companies that work with a wide range of clients which may include fossil fuel companies.
+    - Companies that provide services to fossil fuel companies (e.g., construction, IT, transport) unless that is the main focus of their business.
+    - Countries and governments that benefit from fossil fuel production.
+    - Government departments facilitating, regulating or taxing fossil fuel companies.
+    - Media organisations that report on the activities of fossil fuel companies, even if they are owned by oil and gas interests (e.g. Gazprom-Media).
+
+    Carefully read through the provided documents about {{research_keyword}}. In your analysis, consider the following:
+    - The primary business activities of the organization
+    - Its relationship to the fossil fuel industry
+    - Any evidence of direct involvement in fossil fuel production, trade, or advocacy
+    - Be critical in your evaluation. If the information provided is insufficient or potentially incorrect, acknowledge this in your analysis
+
+    ## Examples
+    <examples>
+    <example>
+    <research_keyword>Shell</research_keyword>
+    <ideal_output>{"org_type": "company", "fossil_fuel_org": true, "explanation": "Shell is a multinational oil and gas company involved in exploration, extraction, refining, and trading of fossil fuels. It has significant business activities in oil and gas production and has publicly declared its involvement in fossil fuels, making it a fossil fuel organization.", "source": "https://www.shell.com/about-us.html", "confidence": "very_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Iberdrola</research_keyword>
+    <ideal_output>{"org_type": "company", "fossil_fuel_org": true, "explanation": "While Iberdrola is primarily focused on renewable energy generation and distribution, and it has publicly committed to reducing its fossil fuel operations, it does have some involvement in natural gas production. This makes it a fossil fuel organization.", "source": "https://en.wikipedia.org/wiki/Iberdrola", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Australian Industry Greenhouse Network</research_keyword>
+    <ideal_output>{"org_type": "trade_group", "fossil_fuel_org": true, "explanation": "The Australian Industry Greenhouse Network (AIGN) is a lobbying group that represents major fossil fuel companies and industries, including oil and gas companies. It has been involved in influencing climate change policy in ways that favor the interests of its fossil fuel members, which aligns with the characteristics of a fossil fuel organization.", "source": "https://www.aign.net.au/about", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Hydrogen Europe</research_keyword>
+    <ideal_output>{"org_type": "trade_group", "fossil_fuel_org": true, "explanation": "Since the vast majority of hydrogen is produced by mixing natural gas and steam, Hydrogen Europe can be thought of as a trade group focused on continuing the use of fossil fuels.", "source": "https://hydrogeneurope.eu/", "confidence": "not_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Global CCS Institute</research_keyword>
+    <ideal_output>{"org_type": "trade_group", "fossil_fuel_org": true, "explanation": "Global CCS Institute is a coalition of fossil fuel companies, selling carbon capture as a tool to continue burning fossil fuels.", "source": "https://www.globalccsinstitute.com/membership/our-members/", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Bank of America</research_keyword>
+    <ideal_output>{"org_type": "investor", "fossil_fuel_org": false, "explanation": "Bank of America is a financial institution that invests in various sectors including oil and gas, but is not primarily a fossil fuel organization.", "source": "https://www.bankofamerica.com/about/", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>LSEG</research_keyword>
+    <ideal_output>{"org_type": "consultancy", "fossil_fuel_org": false, "explanation": "LSEG (London Stock Exchange Group) provides extensive data and analytics related to energy commodities, including oil, gas, coal, and carbon markets. However, they are not primarily involved in producing, selling, transporting or advocating for fossil fuels.", "source": "https://www.lseg.com/en/about-lseg", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Deloitte</research_keyword>
+    <ideal_output>{"org_type": "consultancy", "fossil_fuel_org": false, "explanation": "Deloitte is a professional services network providing consulting, audit, and advisory services to various industries, not primarily focused on fossil fuels.", "source": "https://www2.deloitte.com/global/en/pages/about-deloitte/articles/about-deloitte.html", "confidence": "somewhat_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>Qatar</research_keyword>
+    <ideal_output>{"org_type": "government", "fossil_fuel_org": false, "explanation": "Qatar is a country, not a fossil fuel organization, even though it produces and exports fossil fuels.", "source": "https://www.qatar.qa/en/", "confidence": "very_confident"}</ideal_output>
+    </example>
+    <example>
+    <research_keyword>ADA</research_keyword>
+    <ideal_output>{"org_type": "other", "fossil_fuel_org": false, "explanation": "ADA could refer to a number of different organizations, it would be difficult to determine if the one specified is part of the fossil fuel industry.", "source": "https://ada.com/", "confidence": "not_confident"}</ideal_output>
+    </example>
+    </examples>
+
+    ## Notes
+    - If uncertain or if the documents aren't about {{research_keyword}}, prioritize a 'false' designation, set `confidence` to `not_confident`, and provide reasoning.
+    - Account for ambiguity like dense acronyms or names not clearly indicative of organizations.
+    - Maintain objectivity and critical evaluation of document details.
+
+    # Response format
+
+    Your response should be in JSON format and include the following fields:
+    - `org_type`: The type of organization (company, trade group, investor, consultancy, government, other)
+    - `fossil_fuel_org`: A boolean indicating whether the organization is a fossil fuel company or trade group
+    - `explanation`: A brief explanation of your decision based on the provided documents
+    - `source`: A URL or reference to the document(s) that influenced your decision
+    - `confidence`: Your confidence level in the decision (very_confident, somewhat_confident, not_confident)
+
+    Now, please proceed with your analysis and classification of {{research_keyword}}.
+structure:
+  org_type:
+    type: str
+    description: Is this a for-profit company; a trade group; an NGO/non-profit; a country or government agency; a bank, investor or pension fund; a consultancy or advisory firm; a media organisation; an educational organisation; or something else?
+  fossil_fuel_org:
+    type: bool
+    description: Is this PRIMARILY and DIRECTLY a fossil fuel company or trade group? Remember that governments, investors, consultancies and media organisation aren't fossil fuel companies.
+  agribusiness:
+    type: bool
+    description: Is this PRIMARILY and DIRECTLY a farming company or trade group?
+  explanation:
+    type: str
+    description: A BRIEF explanation of your decision, in English
+  source:
+    type: str
+    description: A link to the SINGLE most relevant source that supports your classification
+  confidence:
+    type: str
+    description: The confidence level of this classification

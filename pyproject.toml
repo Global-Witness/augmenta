@@ -1,0 +1,32 @@
+[project]
+name = "augmenta"
+version = "0.1"
+description = "AI-powered library for data enrichment using search results"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [{name = "Nicu Calcea"}]
+license = {text = "Apache-2.0"}
+classifiers = [
+    "License :: OSI Approved :: Apache Software License"
+]
+dependencies = [
+    "click>=8.0.0",
+    "pyyaml>=6.0",
+    "pandas>=1.0.0"
+]
+
+[project.scripts]
+augmenta = "augmenta.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/Global-Witness/augmenta"
+Changelog = "https://github.com/Global-Witness/augmenta/releases"
+Issues = "https://github.com/Global-Witness/augmenta/issues"
+CI = "https://github.com/Global-Witness/augmenta/actions"
+
+[project.optional-dependencies]
+test = ["pytest"]
