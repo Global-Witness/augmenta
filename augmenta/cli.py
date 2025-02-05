@@ -30,8 +30,7 @@ def prompt_for_api_keys():
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--resume', help='Resume a previous process using its ID')
 @click.option('--clean-cache', is_flag=True, help='Clean up old cache entries')
-@click.option('--max-concurrent', default=3, help='Maximum number of concurrent tasks')
-def main(config_path, verbose, interactive, no_cache, resume, clean_cache, max_concurrent):
+def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
     """
     Augmenta CLI tool for processing data using LLMs.
     
@@ -67,7 +66,6 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache, max_c
                 config_path,
                 cache_enabled=not no_cache,
                 process_id=resume,
-                max_concurrent=max_concurrent,
                 progress_callback=progress_callback
             ))
 

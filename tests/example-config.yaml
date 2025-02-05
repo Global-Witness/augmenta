@@ -5,7 +5,7 @@ model: openai/gpt-4o-mini
 query_col: org_name
 search:
   engine: brave
-  results: 1
+  results: 5
 prompt:
   system: You are an expert researcher whose job is to identify fossil fuel companies and trade groups. You will be provided a collection of documents collected from Google search results. You will determine whether that organization is a fossil fuel company or trade group.
   user: |

@@ -4,7 +4,7 @@ import os
 import logging
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, Any, Callable, List
+from typing import Optional, Tuple, Dict, Any, Callable
 import pandas as pd
 import hashlib
 import asyncio
@@ -15,14 +15,27 @@ from augmenta.core.prompt import prepare_docs
 from augmenta.core.llm import create_structure_class, make_request_llm
 from augmenta.core.cache import CacheManager
 
-# Configure logging
-logging.basicConfig(level=logging.WARNING)
+# Configure logging with more detailed format
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
+
+# Type aliases for clarity
+ConfigDict = Dict[str, Any]
+RowData = Dict[str, Any]
 
 # Constants
 REQUIRED_API_KEYS = {"OPENAI_API_KEY", "BRAVE_API_KEY"}
 REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
-DEFAULT_MAX_CONCURRENT = 3
+
+@dataclass
+class ProcessingResult:
+    """Container for processing results with improved type hints"""
+    index: int
+    data: Optional[Dict[str, Any]]
+    error: Optional[str] = None
 
 class AugmentaError(Exception):
     """Base exception for Augmenta-related errors"""
@@ -32,23 +45,41 @@ class ConfigurationError(AugmentaError):
     """Raised when there are configuration-related errors"""
     pass
 
-@dataclass
-class ProcessingResult:
-    """Container for processing results"""
-    index: int
-    data: Optional[Dict[str, Any]]
-    error: Optional[str] = None
-
-def validate_config(config_data: Dict[str, Any]) -> None:
-    """Validate configuration data"""
-    missing_fields = REQUIRED_CONFIG_FIELDS - set(config_data.keys())
+def validate_config(config: ConfigDict) -> None:
+    """
+    Validate configuration data and raise detailed errors
+    
+    Args:
+        config: Configuration dictionary
+        
+    Raises:
+        ConfigurationError: If configuration is invalid
+    """
+    missing_fields = REQUIRED_CONFIG_FIELDS - set(config.keys())
     if missing_fields:
         raise ConfigurationError(f"Missing required config fields: {missing_fields}")
+    
+    # Validate nested required fields
+    if not isinstance(config.get("search", {}), dict):
+        raise ConfigurationError("'search' must be a dictionary")
+    if not isinstance(config.get("prompt", {}), dict):
+        raise ConfigurationError("'prompt' must be a dictionary")
 
-def get_api_keys(config_data: Dict[str, Any]) -> Dict[str, str]:
-    """Get and validate API keys from environment or config"""
+def get_api_keys(config: ConfigDict) -> Dict[str, str]:
+    """
+    Get and validate API keys from environment or config
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        Dictionary of validated API keys
+        
+    Raises:
+        ConfigurationError: If required API keys are missing
+    """
     keys = {
-        key: os.getenv(key) or config_data.get("api_keys", {}).get(key)
+        key: os.getenv(key) or config.get("api_keys", {}).get(key)
         for key in REQUIRED_API_KEYS
     }
     
@@ -61,31 +92,43 @@ def get_api_keys(config_data: Dict[str, Any]) -> Dict[str, str]:
     
     return keys
 
-def get_config_hash(config_data: Dict[str, Any]) -> str:
+def get_config_hash(config: ConfigDict) -> str:
     """Generate deterministic hash of config data"""
     return hashlib.sha256(
-        json.dumps(config_data, sort_keys=True).encode()
+        json.dumps(config, sort_keys=True).encode()
     ).hexdigest()
 
 async def process_row(
-    row_data: Dict[str, Any],
-    config_data: Dict[str, Any],
+    row_data: RowData,
+    config: ConfigDict,
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[str], None]] = None
 ) -> ProcessingResult:
-    """Process a single data row asynchronously"""
+    """
+    Process a single data row asynchronously
+    
+    Args:
+        row_data: Dictionary containing row data and index
+        config: Configuration dictionary
+        cache_manager: Optional cache manager instance
+        process_id: Optional process ID for caching
+        progress_callback: Optional callback for progress updates
+    
+    Returns:
+        ProcessingResult containing processed data or error
+    """
     index = row_data['index']
     row = row_data['data']
     
     try:
-        query = row[config_data['query_col']]
+        query = row[config['query_col']]
         
         # Fetch and process search results
         urls = await search_web(
             query=query,
-            results=config_data["search"]["results"],
-            engine=config_data["search"]["engine"]
+            results=config["search"]["results"],
+            engine=config["search"]["engine"]
         )
         
         urls_text = await extract_urls(urls)
@@ -94,16 +137,16 @@ async def process_row(
         # Prepare prompt and structure
         prompt_user = (
             f'{urls_docs}\n\n'
-            f'{config_data["prompt"]["user"].replace("{{research_keyword}}", query)}'
+            f'{config["prompt"]["user"].replace("{{research_keyword}}", query)}'
         )
         
-        Structure = create_structure_class(config_data["config_path"])
+        Structure = create_structure_class(config["config_path"])
         
         # Get LLM response
         response = await make_request_llm(
-            prompt_system=config_data["prompt"]["system"],
+            prompt_system=config["prompt"]["system"],
             prompt_user=prompt_user,
-            model=config_data["model"],
+            model=config["model"],
             response_format=Structure
         )
         
@@ -131,7 +174,6 @@ async def process_augmenta(
     config_path: str | Path,
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
-    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
     progress_callback: Optional[Callable[[int, int, str], None]] = None
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """
@@ -141,15 +183,10 @@ async def process_augmenta(
         config_path: Path to YAML config file
         cache_enabled: Whether to enable result caching
         process_id: Optional ID for resuming previous run
-        max_concurrent: Maximum concurrent tasks
         progress_callback: Optional progress reporting callback
     
     Returns:
         Processed DataFrame and process ID (if caching enabled)
-    
-    Raises:
-        ConfigurationError: If configuration is invalid
-        AugmentaError: For other processing errors
     """
     config_path = Path(config_path)
     if not config_path.exists():
@@ -211,22 +248,18 @@ async def process_augmenta(
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
 
-    # Process in batches
-    results: List[ProcessingResult] = []
-    for i in range(0, len(rows_to_process), max_concurrent):
-        batch = rows_to_process[i:i + max_concurrent]
-        batch_tasks = [
-            process_row(
-                row_data=row,
-                config_data=config_data,
-                cache_manager=cache_manager,
-                process_id=process_id,
-                progress_callback=update_progress
-            ) for row in batch
-        ]
-        
-        batch_results = await asyncio.gather(*batch_tasks)
-        results.extend(batch_results)
+    # Process all rows concurrently
+    tasks = [
+        process_row(
+            row_data=row,
+            config=config_data,
+            cache_manager=cache_manager,
+            process_id=process_id,
+            progress_callback=update_progress
+        ) for row in rows_to_process
+    ]
+    
+    results = await asyncio.gather(*tasks)
 
     # Update DataFrame with results
     for result in results:
