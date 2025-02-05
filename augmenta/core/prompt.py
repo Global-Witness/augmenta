@@ -1,32 +1,43 @@
 from typing import List, Tuple, Optional
 from xml.sax.saxutils import escape
 
+DocumentContent = List[Tuple[str, Optional[str]]]  # Type alias for better readability
 
-def prepare_docs(scraped_content: List[Tuple[str, Optional[str]]]) -> str:
+def prepare_docs(scraped_content: DocumentContent) -> str:
     """
-    Prepare and trim the scraped content for processing.
+    Prepares scraped content by converting it into a structured XML format.
+    Filters out entries with None content and escapes special characters.
 
     Args:
-        scraped_content (List[Tuple[str, Optional[str]]]): List of tuples containing URL and text content.
+        scraped_content: List of tuples containing (URL, content) pairs.
+                        Content may be None for failed scrapes.
 
     Returns:
-        str: The prepared and trimmed content in XML format.
+        A formatted XML string containing the documents with their sources.
 
-    Raises:
-        ValueError: If an unsupported model is provided.
+    Example:
+        >>> content = [("http://example.com", "Some text"), ("http://test.com", None)]
+        >>> prepare_docs(content)
+        '<documents>
+           <document index="1">
+             <source>http://example.com</source>
+             <document_content>Some text</document_content>
+           </document>
+         </documents>'
     """
-    
-    scraped_content = [(url, text) for url, text in scraped_content if text is not None]
-    
-    xml_content = "<documents>\n"
-    for index, (url, text) in enumerate(scraped_content, start=1):
-        if text is not None:
-            xml_content += f"<document index=\"{index}\">\n"
-            xml_content += f"<source>{escape(url)}</source>\n"
-            xml_content += "<document_content>\n"
-            xml_content += escape(text)
-            xml_content += "\n</document_content>\n"
-            xml_content += "</document>\n"
-    xml_content += "</documents>"
-    return xml_content
+    if not scraped_content:
+        return "<documents></documents>"
 
+    # Filter out entries with None content
+    valid_content = [(url, text) for url, text in scraped_content if text]
+
+    # Build XML using list comprehension for better performance
+    documents = [
+        f'<document index="{i}">\n'
+        f'<source>{escape(url)}</source>\n'
+        f'<document_content>\n{escape(text)}\n</document_content>\n'
+        f'</document>'
+        for i, (url, text) in enumerate(valid_content, start=1)
+    ]
+
+    return f"<documents>\n{''.join(documents)}\n</documents>"

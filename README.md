@@ -49,20 +49,23 @@ python -m pytest
 
 ## To-do
 - [x] Refactor to async (use `aiohttp` for requests)
+  - [ ] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Caching (for resuming interrupted augmentations) using SQLite
   - [ ] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
-- [x] Multithreading
-  - [ ] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Progress bar for the CLI
 - [ ] Test support for various models (Claude, Deepseek, etc)
 - [ ] Validation of output for models wihtout a JSON schema
   - [ ] [Outlines](https://dottxt-ai.github.io/outlines/latest/welcome/) or [Instructor](https://python.useinstructor.com/)
+  - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
 - [ ] Add LLM token limits, trimiing function
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Scrape via proxy (oxylabs)
+- [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
 
 ### Nice to have
 - [ ] Add support for PDFs and other file types?
 - [ ] Keep logs (maybe as an option in the CLI?)
 - [ ] Abstract examples in the YAML, add XML function
+- [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
+- [ ] Make it so that you can refer to other columns in the prompt

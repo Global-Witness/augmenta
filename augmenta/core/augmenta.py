@@ -1,162 +1,185 @@
 import yaml
 import json
 import os
+import logging
+from pathlib import Path
+from dataclasses import dataclass
+from typing import Optional, Tuple, Dict, Any, Callable, List
 import pandas as pd
 import hashlib
 import asyncio
-from typing import Optional, Tuple, Dict, Any, Callable
+
 from augmenta.core.search import search_web
 from augmenta.core.extract_text import extract_urls
 from augmenta.core.prompt import prepare_docs
 from augmenta.core.llm import create_structure_class, make_request_llm
 from augmenta.core.cache import CacheManager
 
-def get_api_keys(config_data):
-    """
-    Get API keys using the following priority:
-    1. Environment variables
-    2. Config file
-    """
+# Configure logging
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
+# Constants
+REQUIRED_API_KEYS = {"OPENAI_API_KEY", "BRAVE_API_KEY"}
+REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
+DEFAULT_MAX_CONCURRENT = 3
+
+class AugmentaError(Exception):
+    """Base exception for Augmenta-related errors"""
+    pass
+
+class ConfigurationError(AugmentaError):
+    """Raised when there are configuration-related errors"""
+    pass
+
+@dataclass
+class ProcessingResult:
+    """Container for processing results"""
+    index: int
+    data: Optional[Dict[str, Any]]
+    error: Optional[str] = None
+
+def validate_config(config_data: Dict[str, Any]) -> None:
+    """Validate configuration data"""
+    missing_fields = REQUIRED_CONFIG_FIELDS - set(config_data.keys())
+    if missing_fields:
+        raise ConfigurationError(f"Missing required config fields: {missing_fields}")
+
+def get_api_keys(config_data: Dict[str, Any]) -> Dict[str, str]:
+    """Get and validate API keys from environment or config"""
     keys = {
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY"),
+        key: os.getenv(key) or config_data.get("api_keys", {}).get(key)
+        for key in REQUIRED_API_KEYS
     }
     
-    if "api_keys" in config_data:
-        for key_name, value in keys.items():
-            if value is None:
-                keys[key_name] = config_data["api_keys"].get(key_name)
+    missing_keys = [k for k, v in keys.items() if not v]
+    if missing_keys:
+        raise ConfigurationError(
+            f"Missing required API keys: {missing_keys}. "
+            "Provide via environment variables or config file."
+        )
     
     return keys
 
-def validate_api_keys(keys):
-    """Validate that required API keys are present"""
-    missing_keys = [k for k, v in keys.items() if v is None]
-    if missing_keys:
-        raise ValueError(
-            f"Missing required API keys: {', '.join(missing_keys)}. "
-            "Please provide them either through environment variables "
-            "or in the config file under the 'api_keys' section."
-        )
-
-def get_config_hash(config_data: dict) -> str:
-    """Generate a hash of the config data to uniquely identify the configuration."""
+def get_config_hash(config_data: Dict[str, Any]) -> str:
+    """Generate deterministic hash of config data"""
     return hashlib.sha256(
         json.dumps(config_data, sort_keys=True).encode()
     ).hexdigest()
 
 async def process_row(
     row_data: Dict[str, Any],
-    config_data: dict,
+    config_data: Dict[str, Any],
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[str], None]] = None
-) -> Tuple[int, Optional[Dict[str, Any]]]:
-    """
-    Process a single row of data asynchronously.
-    """
+) -> ProcessingResult:
+    """Process a single data row asynchronously"""
     index = row_data['index']
     row = row_data['data']
     
     try:
         query = row[config_data['query_col']]
         
-        # Get search results
+        # Fetch and process search results
         urls = await search_web(
-            query, 
-            results=config_data["search"]["results"], 
+            query=query,
+            results=config_data["search"]["results"],
             engine=config_data["search"]["engine"]
         )
         
-        # Extract text from URLs
         urls_text = await extract_urls(urls)
-        
-        # Prepare documents for processing
         urls_docs = prepare_docs(urls_text)
         
-        prompt_user = config_data["prompt"]["user"].replace("{{research_keyword}}", query)
-        prompt_user = f'{urls_docs}\n\n{prompt_user}'
+        # Prepare prompt and structure
+        prompt_user = (
+            f'{urls_docs}\n\n'
+            f'{config_data["prompt"]["user"].replace("{{research_keyword}}", query)}'
+        )
         
-        # Create a Pydantic class for the structured output
         Structure = create_structure_class(config_data["config_path"])
         
-        # Make the LLM request
+        # Get LLM response
         response = await make_request_llm(
-            prompt_system=config_data["prompt"]["system"], 
-            prompt_user=prompt_user, 
+            prompt_system=config_data["prompt"]["system"],
+            prompt_user=prompt_user,
             model=config_data["model"],
             response_format=Structure
         )
         
-        # Convert JSON string to dictionary
         response_dict = json.loads(response)
         
-        # Cache the result if enabled
+        # Cache result if enabled
         if cache_manager and process_id:
             cache_manager.cache_result(
-                process_id,
-                index,
-                query,
-                json.dumps(response_dict)
+                process_id=process_id,
+                row_index=index,
+                query=query,
+                result=json.dumps(response_dict)
             )
         
-        # Only call progress callback after everything is complete
         if progress_callback:
             progress_callback(query)
             
-        return index, response_dict
+        return ProcessingResult(index=index, data=response_dict)
         
     except Exception as e:
-        print(f"Error processing row {index}: {e}")
-        return index, None
+        logger.error(f"Error processing row {index}: {str(e)}", exc_info=True)
+        return ProcessingResult(index=index, data=None, error=str(e))
 
 async def process_augmenta(
-    config_path: str, 
-    cache_enabled: bool = True, 
+    config_path: str | Path,
+    cache_enabled: bool = True,
     process_id: Optional[str] = None,
-    max_concurrent: int = 3,
+    max_concurrent: int = DEFAULT_MAX_CONCURRENT,
     progress_callback: Optional[Callable[[int, int, str], None]] = None
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """
-    Process data asynchronously using the Augmenta pipeline.
+    Process data using the Augmenta pipeline.
     
     Args:
-        config_path (str): Path to the YAML config file
-        cache_enabled (bool): Whether to enable caching
-        process_id (str, optional): Process ID for resuming a previous run
-        max_concurrent (int): Maximum number of concurrent tasks
-        progress_callback: Optional callback for progress updates
-        
+        config_path: Path to YAML config file
+        cache_enabled: Whether to enable result caching
+        process_id: Optional ID for resuming previous run
+        max_concurrent: Maximum concurrent tasks
+        progress_callback: Optional progress reporting callback
+    
     Returns:
-        Tuple[pd.DataFrame, Optional[str]]: The processed DataFrame and process ID (if caching enabled)
+        Processed DataFrame and process ID (if caching enabled)
+    
+    Raises:
+        ConfigurationError: If configuration is invalid
+        AugmentaError: For other processing errors
     """
-    # Import config values
-    with open(config_path, 'r') as f:
-        config_data = yaml.safe_load(f)
-        config_data["config_path"] = config_path
-        
-    # Get and validate API keys
+    config_path = Path(config_path)
+    if not config_path.exists():
+        raise ConfigurationError(f"Config file not found: {config_path}")
+    
+    # Load and validate configuration
+    try:
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+            config_data["config_path"] = str(config_path)
+    except yaml.YAMLError as e:
+        raise ConfigurationError(f"Invalid YAML config: {e}")
+    
+    validate_config(config_data)
+    
+    # Setup API keys
     api_keys = get_api_keys(config_data)
-    validate_api_keys(api_keys)
+    os.environ.update(api_keys)
     
-    # Set API keys in environment for library usage
-    for key_name, value in api_keys.items():
-        os.environ[key_name] = value
-    
-    input_csv = config_data.get("input_csv")
-    output_csv = config_data.get("output_csv")
-    query_col = config_data.get("query_col")
-    
-    if not input_csv or not query_col:
-        raise ValueError("input_csv and query_col must be specified in the config file")
+    # Load input data
+    try:
+        df = pd.read_csv(config_data["input_csv"])
+        if config_data["query_col"] not in df.columns:
+            raise ConfigurationError(
+                f"Query column '{config_data['query_col']}' not found in CSV"
+            )
+    except Exception as e:
+        raise ConfigurationError(f"Error loading input CSV: {e}")
 
-    # Read the CSV file
-    df = pd.read_csv(input_csv)
-
-    if query_col not in df.columns:
-        raise ValueError(f"Column '{query_col}' not found in the CSV file")
-
-    # Initialize cache and get cached results if enabled
+    # Setup caching
     cache_manager = None
     cached_results = {}
     
@@ -164,37 +187,32 @@ async def process_augmenta(
         cache_manager = CacheManager()
         config_hash = get_config_hash(config_data)
         
-        if process_id is None:
+        if not process_id:
             process_id = cache_manager.start_process(config_hash, len(df))
         
         cached_results = cache_manager.get_cached_results(process_id)
         
-        # Apply cached results to DataFrame
+        # Apply cached results
         for row_index, result in cached_results.items():
             for key, value in result.items():
                 df.at[row_index, key] = value
 
     # Prepare rows for processing
-    rows_to_process = []
-    for index, row in df.iterrows():
-        if not cache_enabled or index not in cached_results:
-            rows_to_process.append({
-                'index': index,
-                'data': row
-            })
+    rows_to_process = [
+        {'index': index, 'data': row}
+        for index, row in df.iterrows()
+        if not cache_enabled or index not in cached_results
+    ]
 
-    total_rows = len(rows_to_process)
-    processed_rows = 0
-
+    processed = 0
     def update_progress(query: str):
-        nonlocal processed_rows
-        processed_rows += 1
+        nonlocal processed
+        processed += 1
         if progress_callback:
-            progress_callback(processed_rows, total_rows, query)
+            progress_callback(processed, len(rows_to_process), query)
 
-    # Process rows with concurrency limit
-    results = []
-    
+    # Process in batches
+    results: List[ProcessingResult] = []
     for i in range(0, len(rows_to_process), max_concurrent):
         batch = rows_to_process[i:i + max_concurrent]
         batch_tasks = [
@@ -211,13 +229,15 @@ async def process_augmenta(
         results.extend(batch_results)
 
     # Update DataFrame with results
-    for index, result in results:
-        if result:
-            for key, value in result.items():
-                df.at[index, key] = value
+    for result in results:
+        if result.data:
+            for key, value in result.data.items():
+                df.at[result.index, key] = value
+        elif result.error:
+            logger.error(f"Row {result.index} failed: {result.error}")
 
-    # Save the results back to a CSV
-    if output_csv:
+    # Save results
+    if output_csv := config_data.get("output_csv"):
         df.to_csv(output_csv, index=False)
     
     return df, process_id if cache_enabled else None
