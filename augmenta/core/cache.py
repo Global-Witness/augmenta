@@ -261,3 +261,47 @@ class CacheManager:
                 self.writer_thread.join(timeout=5.0)
             except Exception as e:
                 logger.error(f"Error during cleanup: {e}")
+    
+    def find_unfinished_process(self, config_hash: str) -> Optional[ProcessStatus]:
+        """Find the most recent unfinished process for a given config hash
+        
+        Args:
+            config_hash: Hash of the process configuration
+            
+        Returns:
+            Optional[ProcessStatus]: Most recent unfinished process or None if not found
+        """
+        with self._get_connection() as conn:
+            row = conn.execute("""
+                SELECT * FROM processes 
+                WHERE config_hash = ? 
+                AND status = 'running'
+                ORDER BY last_updated DESC 
+                LIMIT 1
+            """, (config_hash,)).fetchone()
+            
+            if row:
+                return ProcessStatus(**dict(row))
+            return None
+
+    def get_process_summary(self, process: ProcessStatus) -> str:
+        """Get a human-readable summary of a process
+        
+        Args:
+            process: ProcessStatus object
+            
+        Returns:
+            str: Human-readable summary
+        """
+        time_diff = datetime.now() - process.last_updated
+        if time_diff.days > 0:
+            time_ago = f"{time_diff.days} days ago"
+        elif time_diff.seconds > 3600:
+            time_ago = f"{time_diff.seconds // 3600} hours ago"
+        else:
+            time_ago = f"{time_diff.seconds // 60} minutes ago"
+            
+        return (
+            f"Found unfinished process from {time_ago}\n"
+            f"Progress: {process.processed_rows}/{process.total_rows} rows completed"
+        )

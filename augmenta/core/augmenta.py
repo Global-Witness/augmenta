@@ -6,7 +6,6 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Tuple, Dict, Any, Callable
 import pandas as pd
-import hashlib
 import asyncio
 
 from augmenta.core.search import search_web
@@ -14,6 +13,7 @@ from augmenta.core.extract_text import extract_urls
 from augmenta.core.prompt import prepare_docs
 from augmenta.core.llm import create_structure_class, make_request_llm
 from augmenta.core.cache import CacheManager
+from augmenta.core.utils import get_config_hash
 
 # Configure logging with more detailed format
 logging.basicConfig(
@@ -92,12 +92,6 @@ def get_api_keys(config: ConfigDict) -> Dict[str, str]:
     
     return keys
 
-def get_config_hash(config: ConfigDict) -> str:
-    """Generate deterministic hash of config data"""
-    return hashlib.sha256(
-        json.dumps(config, sort_keys=True).encode()
-    ).hexdigest()
-
 async def process_row(
     row_data: RowData,
     config: ConfigDict,
@@ -175,7 +169,8 @@ async def process_augmenta(
     config_path: str | Path,
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
-    progress_callback: Optional[Callable[[int, int, str], None]] = None
+    progress_callback: Optional[Callable[[int, int, str], None]] = None,
+    auto_resume: bool = True
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """
     Process data using the Augmenta pipeline.
@@ -185,6 +180,7 @@ async def process_augmenta(
         cache_enabled: Whether to enable result caching
         process_id: Optional ID for resuming previous run
         progress_callback: Optional progress reporting callback
+        auto_resume: Whether to enable automatic process resumption
     
     Returns:
         Processed DataFrame and process ID (if caching enabled)
@@ -225,6 +221,11 @@ async def process_augmenta(
         cache_manager = CacheManager()
         config_hash = get_config_hash(config_data)
         
+        if not process_id and auto_resume:
+            unfinished_process = cache_manager.find_unfinished_process(config_hash)
+            if unfinished_process:
+                process_id = unfinished_process.process_id
+                
         if not process_id:
             process_id = cache_manager.start_process(config_hash, len(df))
         

@@ -1,8 +1,10 @@
 import click
 import os
 import asyncio
+import yaml
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache import CacheManager
+from augmenta.core.utils import get_config_hash
 
 def prompt_for_api_keys():
     """Prompt user for API keys if they're not set"""
@@ -30,7 +32,8 @@ def prompt_for_api_keys():
 @click.option('--no-cache', is_flag=True, help='Disable caching')
 @click.option('--resume', help='Resume a previous process using its ID')
 @click.option('--clean-cache', is_flag=True, help='Clean up old cache entries')
-def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
+@click.option('--no-auto-resume', is_flag=True, help='Disable automatic process resumption')
+def main(config_path, verbose, interactive, no_cache, resume, clean_cache, no_auto_resume):
     """
     Augmenta CLI tool for processing data using LLMs.
     
@@ -52,6 +55,21 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
         if verbose:
             click.echo(f"Processing config file: {config_path}")
 
+        # Check for unfinished process if not explicitly resuming
+        if not resume and not no_cache and not no_auto_resume:
+            with open(config_path, 'r') as f:
+                config_data = yaml.safe_load(f)
+            
+            cache_manager = CacheManager()
+            config_hash = get_config_hash(config_data)
+            unfinished_process = cache_manager.find_unfinished_process(config_hash)
+            
+            if unfinished_process:
+                summary = cache_manager.get_process_summary(unfinished_process)
+                click.echo(summary)
+                if click.confirm("Would you like to resume this process?"):
+                    resume = unfinished_process.process_id
+
         current_query = ""
         with click.progressbar(
             length=100,
@@ -69,7 +87,8 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
                 config_path,
                 cache_enabled=not no_cache,
                 process_id=resume,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                auto_resume=not no_auto_resume
             ))
 
         if verbose:
