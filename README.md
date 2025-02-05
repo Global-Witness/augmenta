@@ -10,23 +10,24 @@ AI-powered library for data enrichment using search results
 ## Installation
 
 Install this library using `pip`:
+
 ```bash
 pip install augmenta
 ```
 
 ## Usage
 
-Normal run: augmenta config.yaml
+Normal run: `augmenta config.yaml`
 
-Disable cache: augmenta config.yaml --no-cache
+Disable cache: `augmenta config.yaml --no-cache`
 
-Resume process: augmenta config.yaml --resume PROCESS_ID
+Resume process: `augmenta config.yaml --resume PROCESS_ID`
 
-Clean old cache: augmenta config.yaml --clean-cache
+Clean old cache: `augmenta --clean-cache`
 
 ## Development
 
-To contribute to this library, first checkout the code. Then create a new virtual environment:
+Create a new virtual environment:
 
 ```bash
 cd augmenta
@@ -49,7 +50,7 @@ python -m pytest
 
 ## To-do
 - [x] Refactor to async (use `aiohttp` for requests)
-  - [ ] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
+  - [x] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Caching (for resuming interrupted augmentations) using SQLite
   - [ ] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)

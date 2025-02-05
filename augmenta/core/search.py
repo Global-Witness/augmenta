@@ -4,7 +4,7 @@ import asyncio
 import time
 
 # Constants
-MIN_REQUEST_INTERVAL = 1.0  # Minimum time between requests in seconds
+# MIN_RATE_LIMIT = 1.0  # Minimum time between requests in seconds
 DEFAULT_RESULTS_COUNT = 5
 SUPPORTED_ENGINES = {"brave"}
 
@@ -15,7 +15,8 @@ _last_request_time: float = 0.0
 async def search_web(
     query: str,
     results: int = DEFAULT_RESULTS_COUNT,
-    engine: str = "brave"
+    engine: str = "brave",
+    rate_limit: float = 1.0
 ) -> List[str]:
     """
     Search the web for a query with rate limiting (1 request/second).
@@ -43,7 +44,7 @@ async def search_web(
 
     try:
         async with _search_semaphore:
-            await _enforce_rate_limit()
+            await _enforce_rate_limit(rate_limit = rate_limit)
             
             brave = AsyncBrave()
             search_results = await brave.search(q=query, count=results)
@@ -56,14 +57,14 @@ async def search_web(
     except Exception as e:
         raise RuntimeError(f"Search failed: {str(e)}") from e
 
-async def _enforce_rate_limit() -> None:
+async def _enforce_rate_limit(rate_limit: float) -> None:
     """Enforce minimum time interval between requests."""
     global _last_request_time
     
     current_time = time.time()
     time_since_last_request = current_time - _last_request_time
     
-    if time_since_last_request < MIN_REQUEST_INTERVAL:
-        await asyncio.sleep(MIN_REQUEST_INTERVAL - time_since_last_request)
+    if time_since_last_request < rate_limit:
+        await asyncio.sleep(rate_limit - time_since_last_request)
     
     _last_request_time = time.time()

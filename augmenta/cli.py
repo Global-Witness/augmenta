@@ -23,7 +23,7 @@ def prompt_for_api_keys():
     return keys
 
 @click.command()
-@click.argument('config_path', type=click.Path(exists=True))
+@click.argument('config_path', type=click.Path(exists=True), required=False)
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose output')
 @click.option('--interactive', '-i', is_flag=True, 
               help='Enable interactive mode for entering API keys')
@@ -34,17 +34,20 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache):
     """
     Augmenta CLI tool for processing data using LLMs.
     
-    CONFIG_PATH: Path to the YAML configuration file
+    CONFIG_PATH: Path to the YAML configuration file (required unless using --clean-cache)
     """
     try:
-        if interactive:
-            prompt_for_api_keys()
-        
         if clean_cache:
             cache_manager = CacheManager()
             cache_manager.cleanup_old_processes()
             click.echo("Cache cleaned successfully!")
             return
+
+        if not config_path:
+            raise click.UsageError("Config path is required unless using --clean-cache")
+
+        if interactive:
+            prompt_for_api_keys()
 
         if verbose:
             click.echo(f"Processing config file: {config_path}")

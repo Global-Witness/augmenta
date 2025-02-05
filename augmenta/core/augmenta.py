@@ -128,7 +128,8 @@ async def process_row(
         urls = await search_web(
             query=query,
             results=config["search"]["results"],
-            engine=config["search"]["engine"]
+            engine=config["search"]["engine"],
+            rate_limit=config["search"]["rate_limit"]
         )
         
         urls_text = await extract_urls(urls)
