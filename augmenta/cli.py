@@ -2,16 +2,19 @@ import click
 import os
 import asyncio
 import yaml
-from augmenta.core.augmenta import process_augmenta
+from augmenta.core.augmenta import process_augmenta, get_required_api_keys
 from augmenta.core.cache import CacheManager
 from augmenta.core.utils import get_config_hash
 
-def prompt_for_api_keys():
-    """Prompt user for API keys if they're not set"""
-    keys = {
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "BRAVE_API_KEY": os.getenv("BRAVE_API_KEY")
-    }
+def prompt_for_api_keys(config_data):
+    """
+    Prompt user for API keys if they're not set
+    
+    Args:
+        config_data: The loaded configuration dictionary
+    """
+    required_keys = get_required_api_keys(config_data)
+    keys = {key: os.getenv(key) for key in required_keys}
     
     for key_name, value in keys.items():
         if value is None:
@@ -33,12 +36,20 @@ def prompt_for_api_keys():
 @click.option('--resume', help='Resume a previous process using its ID')
 @click.option('--clean-cache', is_flag=True, help='Clean up old cache entries')
 @click.option('--no-auto-resume', is_flag=True, help='Disable automatic process resumption')
-def main(config_path, verbose, interactive, no_cache, resume, clean_cache, no_auto_resume):
+def main(**kwargs):
     """
     Augmenta CLI tool for processing data using LLMs.
     
     CONFIG_PATH: Path to the YAML configuration file (required unless using --clean-cache)
     """
+    config_path = kwargs.get('config_path')
+    verbose = kwargs.get('verbose', False)
+    interactive = kwargs.get('interactive', False)
+    no_cache = kwargs.get('no_cache', False)
+    resume = kwargs.get('resume')
+    clean_cache = kwargs.get('clean_cache', False)
+    no_auto_resume = kwargs.get('no_auto_resume', False)
+
     try:
         if clean_cache:
             cache_manager = CacheManager()
@@ -49,17 +60,18 @@ def main(config_path, verbose, interactive, no_cache, resume, clean_cache, no_au
         if not config_path:
             raise click.UsageError("Config path is required unless using --clean-cache")
 
+        # Load config first to determine required API keys
+        with open(config_path, 'r') as f:
+            config_data = yaml.safe_load(f)
+
         if interactive:
-            prompt_for_api_keys()
+            prompt_for_api_keys(config_data)
 
         if verbose:
             click.echo(f"Processing config file: {config_path}")
 
         # Check for unfinished process if not explicitly resuming
         if not resume and not no_cache and not no_auto_resume:
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-            
             cache_manager = CacheManager()
             config_hash = get_config_hash(config_data)
             unfinished_process = cache_manager.find_unfinished_process(config_hash)

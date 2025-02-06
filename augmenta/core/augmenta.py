@@ -4,7 +4,7 @@ import os
 import logging
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, Any, Callable
+from typing import Optional, Tuple, Dict, Any, Callable, Set
 import pandas as pd
 import asyncio
 
@@ -27,7 +27,6 @@ ConfigDict = Dict[str, Any]
 RowData = Dict[str, Any]
 
 # Constants
-REQUIRED_API_KEYS = {"OPENAI_API_KEY", "BRAVE_API_KEY"}
 REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
 
 @dataclass
@@ -65,6 +64,35 @@ def validate_config(config: ConfigDict) -> None:
     if not isinstance(config.get("prompt", {}), dict):
         raise ConfigurationError("'prompt' must be a dictionary")
 
+
+def get_required_api_keys(config: ConfigDict) -> Set[str]:
+    """
+    Determine required API keys based on configuration
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        Set of required API key names
+    """
+    required_keys = set()
+    
+    # Search engine requirements
+    search_engine = config.get("search", {}).get("engine", "").lower()
+    if search_engine == "brave":
+        required_keys.add("BRAVE_API_KEY")
+    elif search_engine in ["oxylabs_google", "oxylabs_bing"]:
+        required_keys.add("OXYLABS_USERNAME")
+        required_keys.add("OXYLABS_PASSWORD")
+        
+    # LLM provider requirements
+    model = config.get("model", "").lower()
+    if model.startswith("openai"):
+        required_keys.add("OPENAI_API_KEY")
+        
+    return required_keys
+
+
 def get_api_keys(config: ConfigDict) -> Dict[str, str]:
     """
     Get and validate API keys from environment or config
@@ -78,9 +106,11 @@ def get_api_keys(config: ConfigDict) -> Dict[str, str]:
     Raises:
         ConfigurationError: If required API keys are missing
     """
+    required_keys = get_required_api_keys(config)
+    
     keys = {
         key: os.getenv(key) or config.get("api_keys", {}).get(key)
-        for key in REQUIRED_API_KEYS
+        for key in required_keys
     }
     
     missing_keys = [k for k, v in keys.items() if not v]
@@ -91,6 +121,7 @@ def get_api_keys(config: ConfigDict) -> Dict[str, str]:
         )
     
     return keys
+
 
 async def process_row(
     row_data: RowData,

@@ -52,14 +52,14 @@ python -m pytest
 - [x] Refactor to async (use `aiohttp` for requests)
   - [x] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Caching (for resuming interrupted augmentations) using SQLite
-  - [ ] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
+  - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
 - [x] Progress bar for the CLI
 - [ ] Test support for various models (Claude, Deepseek, etc)
 - [ ] Validation of output for models wihtout a JSON schema
   - [ ] [Outlines](https://dottxt-ai.github.io/outlines/latest/welcome/) or [Instructor](https://python.useinstructor.com/)
   - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
-- [ ] Add LLM token limits, trimiing function
+- [ ] Add LLM token limits, triming function, rate limiting
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Scrape via proxy (oxylabs)
 - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
