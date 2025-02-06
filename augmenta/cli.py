@@ -2,9 +2,18 @@ import click
 import os
 import asyncio
 import yaml
-from augmenta.core.augmenta import process_augmenta, get_required_api_keys
+import logging
+from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache import CacheManager
 from augmenta.core.utils import get_config_hash
+from augmenta.core.config.credentials import CredentialsManager
+
+# Configure root logger to WARNING level
+logging.getLogger().setLevel(logging.WARNING)
+
+# Disable INFO logs from specific noisy libraries
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('LiteLLM').setLevel(logging.WARNING)
 
 def prompt_for_api_keys(config_data):
     """
@@ -13,7 +22,8 @@ def prompt_for_api_keys(config_data):
     Args:
         config_data: The loaded configuration dictionary
     """
-    required_keys = get_required_api_keys(config_data)
+    credentials_manager = CredentialsManager()
+    required_keys = credentials_manager.get_required_keys(config_data)
     keys = {key: os.getenv(key) for key in required_keys}
     
     for key_name, value in keys.items():

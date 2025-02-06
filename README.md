@@ -63,6 +63,7 @@ python -m pytest
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Scrape via proxy (oxylabs)
 - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
+- [ ] Check for proper package structure stuff
 
 ### Nice to have
 - [ ] Add support for PDFs and other file types?
@@ -70,3 +71,4 @@ python -m pytest
 - [ ] Abstract examples in the YAML, add XML function
 - [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
 - [ ] Make it so that you can refer to other columns in the prompt
+- [ ] Make the search optional, some prompts may only need data that is already available

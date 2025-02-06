@@ -1,28 +1,24 @@
 import yaml
 import json
-import os
 import logging
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, Any, Callable, Set
-import pandas as pd
 import asyncio
+import pandas as pd
+from pathlib import Path
+from typing import Optional, Tuple, Dict, Any, Callable
+from dataclasses import dataclass
 
 from augmenta.core.search import search_web
-from augmenta.core.extract_text import extract_urls
+from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import prepare_docs
 from augmenta.core.llm import create_structure_class, make_request_llm
 from augmenta.core.cache import CacheManager
+from augmenta.core.config.credentials import CredentialsManager
 from augmenta.core.utils import get_config_hash
 
-# Configure logging with more detailed format
-logging.basicConfig(
-    level=logging.WARNING,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+# Configure module logger
 logger = logging.getLogger(__name__)
 
-# Type aliases for clarity
+# Type aliases
 ConfigDict = Dict[str, Any]
 RowData = Dict[str, Any]
 
@@ -31,7 +27,7 @@ REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
 
 @dataclass
 class ProcessingResult:
-    """Container for processing results with improved type hints"""
+    """Container for processing results"""
     index: int
     data: Optional[Dict[str, Any]]
     error: Optional[str] = None
@@ -41,126 +37,48 @@ class AugmentaError(Exception):
     pass
 
 class ConfigurationError(AugmentaError):
-    """Raised when there are configuration-related errors"""
+    """Configuration-related errors"""
     pass
 
 def validate_config(config: ConfigDict) -> None:
-    """
-    Validate configuration data and raise detailed errors
-    
-    Args:
-        config: Configuration dictionary
-        
-    Raises:
-        ConfigurationError: If configuration is invalid
-    """
+    """Validate configuration data"""
     missing_fields = REQUIRED_CONFIG_FIELDS - set(config.keys())
     if missing_fields:
         raise ConfigurationError(f"Missing required config fields: {missing_fields}")
     
-    # Validate nested required fields
     if not isinstance(config.get("search", {}), dict):
         raise ConfigurationError("'search' must be a dictionary")
     if not isinstance(config.get("prompt", {}), dict):
         raise ConfigurationError("'prompt' must be a dictionary")
 
-
-def get_required_api_keys(config: ConfigDict) -> Set[str]:
-    """
-    Determine required API keys based on configuration
-    
-    Args:
-        config: Configuration dictionary
-        
-    Returns:
-        Set of required API key names
-    """
-    required_keys = set()
-    
-    # Search engine requirements
-    search_engine = config.get("search", {}).get("engine", "").lower()
-    if search_engine == "brave":
-        required_keys.add("BRAVE_API_KEY")
-    elif search_engine in ["oxylabs_google", "oxylabs_bing"]:
-        required_keys.add("OXYLABS_USERNAME")
-        required_keys.add("OXYLABS_PASSWORD")
-        
-    # LLM provider requirements
-    model = config.get("model", "").lower()
-    if model.startswith("openai"):
-        required_keys.add("OPENAI_API_KEY")
-        
-    return required_keys
-
-
-def get_api_keys(config: ConfigDict) -> Dict[str, str]:
-    """
-    Get and validate API keys from environment or config
-    
-    Args:
-        config: Configuration dictionary
-        
-    Returns:
-        Dictionary of validated API keys
-        
-    Raises:
-        ConfigurationError: If required API keys are missing
-    """
-    required_keys = get_required_api_keys(config)
-    
-    keys = {
-        key: os.getenv(key) or config.get("api_keys", {}).get(key)
-        for key in required_keys
-    }
-    
-    missing_keys = [k for k, v in keys.items() if not v]
-    if missing_keys:
-        raise ConfigurationError(
-            f"Missing required API keys: {missing_keys}. "
-            "Provide via environment variables or config file."
-        )
-    
-    return keys
-
-
 async def process_row(
     row_data: RowData,
     config: ConfigDict,
+    credentials: Dict[str, str],
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[str], None]] = None
 ) -> ProcessingResult:
-    """
-    Process a single data row asynchronously
-    
-    Args:
-        row_data: Dictionary containing row data and index
-        config: Configuration dictionary
-        cache_manager: Optional cache manager instance
-        process_id: Optional process ID for caching
-        progress_callback: Optional callback for progress updates
-    
-    Returns:
-        ProcessingResult containing processed data or error
-    """
+    """Process a single data row asynchronously"""
     index = row_data['index']
     row = row_data['data']
     
     try:
         query = row[config['query_col']]
         
-        # Fetch and process search results
+        # Search and extract
         urls = await search_web(
             query=query,
             results=config["search"]["results"],
             engine=config["search"]["engine"],
-            rate_limit=config["search"]["rate_limit"]
+            rate_limit=config["search"]["rate_limit"],
+            credentials=credentials
         )
         
         urls_text = await extract_urls(urls)
         urls_docs = prepare_docs(urls_text)
         
-        # Prepare prompt and structure
+        # Prepare prompt
         prompt_user = (
             f'{urls_docs}\n\n'
             f'{config["prompt"]["user"].replace("{{research_keyword}}", query)}'
@@ -178,7 +96,7 @@ async def process_row(
         
         response_dict = json.loads(response)
         
-        # Cache result if enabled
+        # Cache if enabled
         if cache_manager and process_id:
             cache_manager.cache_result(
                 process_id=process_id,
@@ -203,19 +121,7 @@ async def process_augmenta(
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
     auto_resume: bool = True
 ) -> Tuple[pd.DataFrame, Optional[str]]:
-    """
-    Process data using the Augmenta pipeline.
-    
-    Args:
-        config_path: Path to YAML config file
-        cache_enabled: Whether to enable result caching
-        process_id: Optional ID for resuming previous run
-        progress_callback: Optional progress reporting callback
-        auto_resume: Whether to enable automatic process resumption
-    
-    Returns:
-        Processed DataFrame and process ID (if caching enabled)
-    """
+    """Process data using the Augmenta pipeline"""
     config_path = Path(config_path)
     if not config_path.exists():
         raise ConfigurationError(f"Config file not found: {config_path}")
@@ -230,9 +136,9 @@ async def process_augmenta(
     
     validate_config(config_data)
     
-    # Setup API keys
-    api_keys = get_api_keys(config_data)
-    os.environ.update(api_keys)
+    # Setup credentials
+    credentials_manager = CredentialsManager()
+    credentials = credentials_manager.get_credentials(config_data)
     
     # Load input data
     try:
@@ -281,11 +187,12 @@ async def process_augmenta(
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
 
-    # Process all rows concurrently
+    # Process rows concurrently
     tasks = [
         process_row(
             row_data=row,
             config=config_data,
+            credentials=credentials,
             cache_manager=cache_manager,
             process_id=process_id,
             progress_callback=update_progress
