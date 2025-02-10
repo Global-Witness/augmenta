@@ -23,7 +23,7 @@ ConfigDict = Dict[str, Any]
 RowData = Dict[str, Any]
 
 # Constants
-REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
+REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "llm", "search"}
 
 @dataclass
 class ProcessingResult:
@@ -90,7 +90,7 @@ async def process_row(
         response = await make_request_llm(
             prompt_system=config["prompt"]["system"],
             prompt_user=prompt_user,
-            model=config["model"],
+            model=config["llm"]["model"],
             response_format=Structure
         )
         

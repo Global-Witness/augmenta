@@ -7,7 +7,6 @@ def create_structure_class(yaml_file_path: str) -> Type[BaseModel]:
     TYPE_MAPPING = {
         'str': str,
         'bool': bool,
-        'ConfidenceLevel': str,
         'int': int,
         'float': float,
         'dict': dict,
