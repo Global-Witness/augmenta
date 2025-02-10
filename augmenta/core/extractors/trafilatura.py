@@ -25,5 +25,6 @@ class TrafilaturaExtractor(TextExtractor):
             return None
                 
         except Exception as e:
-            logger.error(f"Error extracting from {url}: {str(e)}")
+            # Changed to debug level since this is expected behavior
+            logger.debug(f"Could not extract content from {url}: {str(e)}")
             return None

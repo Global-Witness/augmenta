@@ -1,6 +1,6 @@
 from typing import List
 from .factory import SearchProviderFactory
-from .rate_limiter import RateLimiter
+from ..utils import RateLimiter
 from .providers import SearchProvider, BraveSearchProvider, OxylabsSearchProvider
 
 # Create a single global rate limiter instance
@@ -54,7 +54,6 @@ async def search_web(
 __all__ = [
     'search_web',
     'SearchProviderFactory',
-    'RateLimiter',
     'SearchProvider',
     'BraveSearchProvider',
     'OxylabsSearchProvider'

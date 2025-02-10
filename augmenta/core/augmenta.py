@@ -23,7 +23,7 @@ ConfigDict = Dict[str, Any]
 RowData = Dict[str, Any]
 
 # Constants
-REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "llm", "search"}
+REQUIRED_CONFIG_FIELDS = {"input_csv", "query_col", "prompt", "model", "search"}
 
 @dataclass
 class ProcessingResult:
@@ -71,7 +71,7 @@ async def process_row(
             query=query,
             results=config["search"]["results"],
             engine=config["search"]["engine"],
-            rate_limit=config["search"]["rate_limit"],
+            rate_limit=config["search"].get("rate_limit"),
             credentials=credentials
         )
         
@@ -90,11 +90,13 @@ async def process_row(
         response = await make_request_llm(
             prompt_system=config["prompt"]["system"],
             prompt_user=prompt_user,
-            model=config["llm"]["model"],
-            response_format=Structure
+            model=config["model"]["name"],
+            response_format=Structure,
+            rate_limit=config["model"].get("rate_limit")
         )
         
-        response_dict = json.loads(response)
+        # Response is already a dict, no need to parse JSON
+        response_dict = response
         
         # Cache if enabled
         if cache_manager and process_id:
@@ -102,7 +104,7 @@ async def process_row(
                 process_id=process_id,
                 row_index=index,
                 query=query,
-                result=json.dumps(response_dict)
+                result=json.dumps(response_dict)  # Convert to JSON for caching
             )
         
         if progress_callback:
@@ -113,6 +115,7 @@ async def process_row(
     except Exception as e:
         logger.error(f"Error processing row {index}: {str(e)}", exc_info=True)
         return ProcessingResult(index=index, data=None, error=str(e))
+
 
 async def process_augmenta(
     config_path: str | Path,

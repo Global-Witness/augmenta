@@ -1,5 +1,5 @@
-from typing import Type
-from pydantic import BaseModel, create_model
+from typing import Type, Any
+from pydantic import BaseModel, create_model, Field
 import yaml
 
 def create_structure_class(yaml_file_path: str) -> Type[BaseModel]:
@@ -20,13 +20,11 @@ def create_structure_class(yaml_file_path: str) -> Type[BaseModel]:
         if 'structure' not in yaml_content:
             raise KeyError("YAML file must contain a 'structure' key")
             
-        fields = {
-            field_name: (
-                TYPE_MAPPING.get(field_info['type'], str),
-                (None, ...)  # (default, required)
-            )
-            for field_name, field_info in yaml_content['structure'].items()
-        }
+        fields = {}
+        for field_name, field_info in yaml_content['structure'].items():
+            field_type = TYPE_MAPPING.get(field_info['type'], str)
+            # Use Field with proper type annotation instead of tuples
+            fields[field_name] = (field_type, Field(default=None))
         
         return create_model('Structure', **fields, __base__=BaseModel)
         

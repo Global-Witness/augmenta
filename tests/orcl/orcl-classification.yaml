@@ -1,7 +1,8 @@
 input_csv: tests/orcl/orcl-standardised.csv
 output_csv: tests/orcl/orcl-output.csv
-llm:
-  model: openai/gpt-4o-mini
+model:
+  name: openai/gpt-4o-mini
+  rate_limit: 10
 # token_limit: 20000
 query_col: org
 search:

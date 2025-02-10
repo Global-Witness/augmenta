@@ -21,7 +21,7 @@ class CredentialsManager:
             required_keys.add("OXYLABS_PASSWORD")
             
         # LLM provider requirements
-        model = config.get("model", "").lower()
+        model = config["model"]["name"].lower()
         if model.startswith("openai"):
             required_keys.add("OPENAI_API_KEY")
             
