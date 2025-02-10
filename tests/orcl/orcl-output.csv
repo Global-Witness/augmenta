@@ -1,37 +1,36 @@
 org,n,think,org_type,industry,explanation,confidence
-Global Witness,43.0,"After carefully reviewing the documents, Global Witness is clearly an environmental non-profit organization focused on investigating and advocating against natural resource exploitation, corruption, and human rights abuses. Key evidence includes:
-
-1. From Wikipedia: ""Global Witness is an international NGO that works to break the links between natural resource exploitation, conflict, poverty, corruption, and human rights abuses worldwide.""
-
-2. Their key activities include:
-- Investigating diamond and natural resource trades
+Global Witness,43.0,"Based on the documents, Global Witness is an international non-profit organization focused on investigating and exposing issues related to natural resources, environmental protection, and human rights. Key points:
+- Founded in 1993 in London
+- Works on investigating natural resource exploitation, conflict, corruption, and human rights abuses
+- Campaigns against environmental and human rights violations
+- Investigates industries like diamonds, oil, timber, mining
+- Advocates for transparency in extractive industries
 - Documenting environmental defender killings
-- Campaigning against anonymous companies
-- Exposing corruption in resource extraction industries
-- Advocating for transparency in extractive industries
-
-3. They have helped establish initiatives like:
-- Extractive Industries Transparency Initiative
-- Kimberley Process (for conflict diamonds)
-- Publish What You Pay coalition
-
-They are clearly an environmental advocacy and investigative organization, not a fossil fuel company or government entity.",NGO,conservation or environmental group,"Global Witness is an international non-governmental organization (NGO) focused on investigating and exposing corruption, human rights abuses, and environmental destruction related to natural resource extraction. Founded in 1993, the organization works to [break the links between natural resource exploitation and conflict](https://en.wikipedia.org/wiki/Global_Witness). Their key activities include investigating industries like diamonds, oil, timber, and mining, and advocating for transparency and accountability in resource-rich countries.",very_confident
-National Grid,40.0,"National Grid appears to be a large utility company focused on electricity and natural gas distribution. Key observations:
+- Focuses on climate change and corporate accountability",NGO or trade group,conservation or environmental group,"Global Witness is an independent, non-profit international NGO that investigates and campaigns against environmental and human rights abuses linked to natural resource exploitation. Their work includes exposing corruption in extractive industries, protecting environmental defenders, and holding companies accountable for climate-related issues. [More details can be found on their Wikipedia page](https://en.wikipedia.org/wiki/Global_Witness).",very_confident
+National Grid,40.0,"National Grid appears to be a utility company focused on electricity and natural gas distribution. Key observations:
 - Serves over 20 million people in New York and Massachusetts
 - Describes itself as an electricity and natural gas delivery company
-- Claims to be working towards a clean energy future and eliminating fossil fuels by 2050
-- Operates as a publicly listed utility company
-- Involved in transmission and distribution of energy
+- Aims to transition to cleaner energy systems by 2050
+- Publicly listed utility focused on transmission and distribution of electricity and gas
+- Operates energy networks and grid infrastructure
 
-The company is clearly in the energy sector, with current operations involving fossil fuels (natural gas) but with a stated goal of transitioning to cleaner energy sources.",For-profit company,fossil fuel organisation,"National Grid is a publicly listed utility company primarily involved in electricity and natural gas distribution. Despite its claims of moving towards clean energy, it currently operates as a fossil fuel-linked energy distribution company. The company explicitly states it is [""one of the world's largest publicly listed utilities focused on transmission and distribution of electricity and gas""](https://www.nationalgrid.com/us), with natural gas being a key part of its current business model. While they have a vision to eliminate fossil fuels by 2050, they are currently still deeply embedded in fossil fuel infrastructure.",very_confident
+This suggests it is a for-profit utility company in the energy distribution sector, not a fossil fuel producer, but still heavily involved with fossil fuel infrastructure.",for-profit company,other,"National Grid is a publicly listed utility company specializing in electricity and natural gas distribution across the Northeastern United States. While the company claims to be working towards eliminating fossil fuels by 2050, it currently operates as an energy distribution network that handles both traditional and clean energy sources. 
+
+Key evidence:
+- Described as [""one of the world's largest publicly listed utilities focused on transmission and distribution of electricity and gas""](https://www.nationalgrid.com/us)
+- Currently serves over 20 million people with electricity and natural gas networks
+- Actively working on transitioning to cleaner energy solutions",very_confident
 "City, University of London",,"Based on the documents, City, University of London is clearly an educational institution:
-- It is a public university located in London, England
-- Founded in 1894 originally as the Northampton Institute
-- Became a university in 1966 by royal charter
-- Part of the University of London
-- Has six academic schools covering areas like business, law, health sciences, etc.
+- It is a public university founded in 1894
+- Located in London, with multiple academic schools
 - Offers undergraduate and postgraduate degrees
-- Focuses on education, research, and career development for students
-- Recently merged with St George's, University of London in 2024
+- Has over 20,000 students
+- Part of the University of London
+- Recently merged with St George's, University of London
 
-There are no indications that this is a fossil fuel company, environmental organization, or government department.",Non-profit,educational institution,"City, University of London is a public research university located in central London. [Founded in 1894](https://en.wikipedia.org/wiki/City,_University_of_London#Origins), it became a university in 1966 and is part of the University of London. The institution offers a wide range of undergraduate and postgraduate programs across six academic schools, including business, law, health sciences, and technology. It is focused on providing professional education and supporting student career development.",very_confident
+Key evidence includes multiple sources confirming its status as a university, including its Wikipedia page, official website, and university ranking sites.",other,educational institution,"City, University of London is a public research university located in the heart of London. Founded in 1894, it is divided into six academic schools including Bayes Business School, School of Health & Psychological Sciences, and The City Law School. The university offers a wide range of undergraduate and postgraduate programs across various disciplines, with strong links to business and industry. 
+
+Key sources:
+- [Wikipedia page](https://en.wikipedia.org/wiki/City,_University_of_London)
+- [University's official website](https://www.city.ac.uk/)
+- [Times Higher Education profile](https://www.timeshighereducation.com/world-university-rankings/city-university-london)",very_confident

@@ -102,7 +102,7 @@ def main(**kwargs):
         ) as bar:
             def progress_callback(current: int, total: int, query: str):
                 nonlocal current_query
-                current_query = f"Current query: {query}"
+                current_query = f"Processed query: {query}"
                 bar.update(round(current / total * 100 - bar.pos, 1))
 
             # Run the async process
