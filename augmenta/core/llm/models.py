@@ -1,10 +1,6 @@
-from typing import Type, Optional
+from typing import Type
 from pydantic import BaseModel, create_model
 import yaml
-
-class ModelResponse(BaseModel):
-    """Base class for model responses"""
-    pass
 
 def create_structure_class(yaml_file_path: str) -> Type[BaseModel]:
     """Creates a Pydantic model class from YAML structure"""

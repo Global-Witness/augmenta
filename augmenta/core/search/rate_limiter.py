@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Optional, Dict
+from typing import Dict
 
 class RateLimiter:
     """Rate limiter for API requests"""

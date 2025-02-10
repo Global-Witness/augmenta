@@ -12,8 +12,9 @@ from augmenta.core.config.credentials import CredentialsManager
 logging.getLogger().setLevel(logging.WARNING)
 
 # Disable INFO logs from specific noisy libraries
-logging.getLogger('httpx').setLevel(logging.WARNING)
-logging.getLogger('LiteLLM').setLevel(logging.WARNING)
+# logging.getLogger('httpx').setLevel(logging.WARNING)
+# logging.getLogger('LiteLLM').setLevel(logging.WARNING)
+logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
 
 def prompt_for_api_keys(config_data):
     """

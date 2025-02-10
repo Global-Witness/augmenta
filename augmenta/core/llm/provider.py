@@ -1,10 +1,9 @@
 from typing import Optional, Type, Any
 from pydantic import BaseModel
 import litellm
-from .base import LLMProvider
 
-class OpenAIProvider(LLMProvider):
-    """OpenAI LLM provider implementation"""
+class LLMProvider:
+    """LiteLLM-based provider implementation"""
     
     def __init__(self, model: str = "openai/gpt-4-turbo-preview"):
         self.model = model
@@ -15,7 +14,7 @@ class OpenAIProvider(LLMProvider):
         prompt_user: str,
         response_format: Optional[Type[BaseModel]] = None
     ) -> Any:
-        """Generate completion using OpenAI"""
+        """Generate completion using LiteLLM"""
         completion_args = {
             "model": self.model,
             "messages": [

@@ -1,0 +1,40 @@
+input_csv: tests/orcl/orcl-standardised.csv
+output_csv: tests/orcl/orcl-output.csv
+model: openai/gpt-4o-mini
+# token_limit: 20000
+query_col: org
+search:
+  engine: brave
+  results: 5
+  rate_limit: 2
+prompt:
+  system: You are an expert researcher whose job is to classify companies based on their industry affiliation. You will be provided a collection of documents collected from Google search results for a company. You will determine what industry that company or trade group belongs to.
+  user: |
+    # Instructions
+    The documents above contain information extracted from a Google search for "{{research_keyword}}". Your task is to determine whether "{{research_keyword}}" is a fossil fuel company or trade group, an environmental organisation, a government department, a university, or something else. Any company linked to the production, sale, distribution or marketing of fossil fuels should be marked as fossil fuel, even if it says it is a green company or is divesting from fossil fuels.
+
+    # Response format
+    Your response should be in JSON format and include the following fields:
+    - `think`: A space for you to think before making a decision. What are the organisation's primary activities? Whose interests does it represent? This will be removed from the final output.
+    - `org_type`: Is this a for-profit company, NGO or trade group?
+    - `industry`: One of "fossil fuel organisation", "conservation or environmental group", "government department", "educational instutution", "other".
+    - `explanation`: A brief explanation of your decision, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one URL.
+    - `confidence`: Your confidence level in the decision (very_confident, somewhat_confident, not_confident).
+      
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{research_keyword}}.
+structure:
+  think:
+    type: str
+    description: Think about this company or trade group. What are its primary activities? Whose interests does it represent?
+  org_type:
+    type: str
+    description: Is this a for-profit company or a trade group?
+  industry:
+    type: str
+    description: Is this a "fossil fuel organisation", a "conservation or environmental group", a "government department", a university or some other "educational instutution", or "other" if none of the previous categories fit?
+  explanation:
+    type: str
+    description: A BRIEF explanation of your decision, in English. Please respond in valid Markdown format, including links to relevant sources where possible. The explanation needs to include at least one inline URL.
+  confidence:
+    type: str
+    description: The confidence level of this classification. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to `not_confident`.
