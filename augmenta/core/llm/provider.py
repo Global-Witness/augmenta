@@ -1,23 +1,13 @@
 from typing import Optional, Type, Union
 from pydantic import BaseModel
-from litellm import Router
-import instructor
-from .validation import OutputValidator
+from .instructor_handler import InstructorHandler
 
 class LLMProvider:
     """LiteLLM-based provider implementation with instructor support"""
     
     def __init__(self, model: str):
         self.model = model
-        router = Router(
-            model_list=[{
-                "model_name": model,
-                "litellm_params": {"model": model},
-            }],
-            default_litellm_params={"acompletion": True}
-        )
-        self.client = instructor.patch(router)
-        self.validator = OutputValidator(model, self.client)
+        self.instructor = InstructorHandler(model)
         
     async def complete(
         self,
@@ -37,8 +27,4 @@ class LLMProvider:
             {"role": "user", "content": prompt_user}
         ]
         
-        try:
-            result = await self.validator.validate_and_parse(messages, response_format)
-            return result
-        except Exception as e:
-            raise RuntimeError(f"LLM request failed: {str(e)}")
+        return await self.instructor.complete_structured(messages, response_format)

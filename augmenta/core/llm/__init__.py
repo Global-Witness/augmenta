@@ -1,7 +1,7 @@
 from typing import Optional, Type, Union
 from pydantic import BaseModel
 from .provider import LLMProvider
-from .models import create_structure_class
+from .instructor_handler import InstructorHandler
 from ..utils import RateLimiter
 
 # Create a single global rate limiter instance
@@ -32,4 +32,5 @@ async def make_request_llm(
     await _rate_limiter.acquire()
     return await provider.complete(prompt_system, prompt_user, response_format)
 
-__all__ = ['make_request_llm', 'create_structure_class', 'LLMProvider']
+# Export the necessary components
+__all__ = ['make_request_llm', 'InstructorHandler', 'LLMProvider']

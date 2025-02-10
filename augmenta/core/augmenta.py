@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from augmenta.core.search import search_web
 from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import prepare_docs, append_structure
-from augmenta.core.llm import create_structure_class, make_request_llm
+from augmenta.core.llm import make_request_llm, InstructorHandler
 from augmenta.core.cache import CacheManager
 from augmenta.core.config.credentials import CredentialsManager
 from augmenta.core.utils import get_config_hash
@@ -91,7 +91,8 @@ async def process_row(
         if "structure" in config:
             prompt_user = append_structure(prompt_user, config["structure"])
         
-        Structure = create_structure_class(config["config_path"])
+        # Create structure class using InstructorHandler
+        Structure = InstructorHandler.create_structure_class(config["config_path"])
         
         # Get LLM response
         response = await make_request_llm(
