@@ -1,37 +1,37 @@
 org,n,think,org_type,industry,explanation,confidence
-Global Witness,43.0,"Based on the documents, Global Witness is clearly an environmental non-profit organization focused on investigating and exposing issues related to natural resources, environmental protection, and human rights. Key evidence includes:
-- Founded in 1993 as an international NGO
-- Works to break links between natural resource exploitation, conflict, poverty, and human rights abuses
-- Investigates issues like illegal logging, conflict diamonds, oil/gas/mining industries
-- Campaigns for transparency in extractive industries
-- Tracks and reports on environmental activist killings
-- Focuses on climate change, environmental protection, and corporate accountability",Non-profit NGO,conservation or environmental group,"Global Witness is an independent, non-profit environmental organization dedicated to investigating and exposing abuses of power related to natural resources and climate change. Founded in 1993, the organization works globally to hold companies and governments accountable for environmental destruction and human rights violations. 
+Global Witness,43.0,"After carefully reviewing the documents, Global Witness is clearly an environmental non-profit organization focused on investigating and advocating against natural resource exploitation, corruption, and human rights abuses. Key evidence includes:
 
-Key evidence of their mission can be found in their [LinkedIn profile](https://www.linkedin.com/company/global-witness), which states they ""shift the balance of power from polluters profiting most from the climate emergency to the people most affected."" Their [Wikipedia entry](https://en.wikipedia.org/wiki/Global_Witness) further details their work in investigating natural resource exploitation, conflict, and environmental issues.",very_confident
+1. From Wikipedia: ""Global Witness is an international NGO that works to break the links between natural resource exploitation, conflict, poverty, corruption, and human rights abuses worldwide.""
+
+2. Their key activities include:
+- Investigating diamond and natural resource trades
+- Documenting environmental defender killings
+- Campaigning against anonymous companies
+- Exposing corruption in resource extraction industries
+- Advocating for transparency in extractive industries
+
+3. They have helped establish initiatives like:
+- Extractive Industries Transparency Initiative
+- Kimberley Process (for conflict diamonds)
+- Publish What You Pay coalition
+
+They are clearly an environmental advocacy and investigative organization, not a fossil fuel company or government entity.",NGO,conservation or environmental group,"Global Witness is an international non-governmental organization (NGO) focused on investigating and exposing corruption, human rights abuses, and environmental destruction related to natural resource extraction. Founded in 1993, the organization works to [break the links between natural resource exploitation and conflict](https://en.wikipedia.org/wiki/Global_Witness). Their key activities include investigating industries like diamonds, oil, timber, and mining, and advocating for transparency and accountability in resource-rich countries.",very_confident
 National Grid,40.0,"National Grid appears to be a large utility company focused on electricity and natural gas distribution. Key observations:
 - Serves over 20 million people in New York and Massachusetts
-- Operates electricity and natural gas networks
-- Claims to be working towards eliminating fossil fuels by 2050
-- Describes itself as a publicly listed utility focused on transmission and distribution of electricity and gas
-- Currently still uses fossil fuels, but has a stated goal of transitioning to clean energy
+- Describes itself as an electricity and natural gas delivery company
+- Claims to be working towards a clean energy future and eliminating fossil fuels by 2050
+- Operates as a publicly listed utility company
+- Involved in transmission and distribution of energy
 
-This suggests it is a for-profit energy utility company that is currently operating with fossil fuels but aims to transition to cleaner energy sources.",for-profit company,fossil fuel organisation,"National Grid is a publicly listed utility company that currently operates electricity and natural gas networks. Despite its claims of working towards a clean energy future, it is fundamentally a fossil fuel-related organisation that distributes natural gas and electricity. The company explicitly states it is [""one of the world's largest publicly listed utilities focused on transmission and distribution of electricity and gas""](https://www.nationalgrid.com/us). While they have a vision to eliminate fossil fuels by 2050, they are currently still a fossil fuel distribution company.",very_confident
+The company is clearly in the energy sector, with current operations involving fossil fuels (natural gas) but with a stated goal of transitioning to cleaner energy sources.",For-profit company,fossil fuel organisation,"National Grid is a publicly listed utility company primarily involved in electricity and natural gas distribution. Despite its claims of moving towards clean energy, it currently operates as a fossil fuel-linked energy distribution company. The company explicitly states it is [""one of the world's largest publicly listed utilities focused on transmission and distribution of electricity and gas""](https://www.nationalgrid.com/us), with natural gas being a key part of its current business model. While they have a vision to eliminate fossil fuels by 2050, they are currently still deeply embedded in fossil fuel infrastructure.",very_confident
 "City, University of London",,"Based on the documents, City, University of London is clearly an educational institution:
-- It is a public research university founded in 1894
-- Located in London, UK
-- Has six academic schools covering various disciplines
-- Offers undergraduate and postgraduate degrees
+- It is a public university located in London, England
+- Founded in 1894 originally as the Northampton Institute
+- Became a university in 1966 by royal charter
 - Part of the University of London
-- Recently merged with St George's, University of London in August 2024
+- Has six academic schools covering areas like business, law, health sciences, etc.
+- Offers undergraduate and postgraduate degrees
+- Focuses on education, research, and career development for students
+- Recently merged with St George's, University of London in 2024
 
-Key evidence:
-1. From Wikipedia: ""City, University of London was a public university from 1966 to 2024 in London, England""
-2. From TopUniversities.com: ""City University of London is a leading UK university with a global vision and a commitment to transforming lives through education""
-
-This is unambiguously an educational institution, not a fossil fuel company or environmental organization.",Non-profit,educational institution,"City, University of London is a public research university located in the heart of London. It offers a wide range of undergraduate and postgraduate programs across six academic schools, including Business, Law, Health Sciences, and more. 
-
-Key sources:
-- [Wikipedia entry on City, University of London](https://en.wikipedia.org/wiki/City,_University_of_London)
-- [University's official website](https://www.city.ac.uk/)
-
-The university is known for its strong links to business and industry, with a focus on professional education and career development.",very_confident
+There are no indications that this is a fossil fuel company, environmental organization, or government department.",Non-profit,educational institution,"City, University of London is a public research university located in central London. [Founded in 1894](https://en.wikipedia.org/wiki/City,_University_of_London#Origins), it became a university in 1966 and is part of the University of London. The institution offers a wide range of undergraduate and postgraduate programs across six academic schools, including business, law, health sciences, and technology. It is focused on providing professional education and supporting student career development.",very_confident

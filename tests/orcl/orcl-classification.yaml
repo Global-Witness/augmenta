@@ -13,7 +13,7 @@ prompt:
   system: You are an expert researcher whose job is to classify companies based on their industry affiliation. You will be provided a collection of documents collected from Google search results for a company. You will determine what industry that company or trade group belongs to.
   user: |
     # Instructions
-    The documents above contain information extracted from a Google search for "{{research_keyword}}". Your task is to determine whether "{{research_keyword}}" is a fossil fuel company or trade group, an environmental organisation, a government department, a university, or something else. Any company linked to the production, sale, distribution or marketing of fossil fuels should be marked as fossil fuel, even if it says it is a green company or is divesting from fossil fuels.
+    The documents above contain information extracted from a Google search for "{{org}}". Your task is to determine whether {{org}} is a fossil fuel company or trade group, an environmental organisation, a government department, a university, or something else. Any company linked to the production, sale, distribution or marketing of fossil fuels should be marked as fossil fuel, even if it says it is a green company or is divesting from fossil fuels.
 
     # Response format
     Your response should be in JSON format and include the following fields:
@@ -23,7 +23,7 @@ prompt:
     - `explanation`: A brief explanation of your decision, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one URL.
     - `confidence`: Your confidence level in the decision (very_confident, somewhat_confident, not_confident).
       
-    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{research_keyword}}.
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{org}}.
 structure:
   think:
     type: str

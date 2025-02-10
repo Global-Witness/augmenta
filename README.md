@@ -72,5 +72,5 @@ python -m pytest
 - [ ] Abstract examples in the YAML, add XML function
 - [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
 - [ ] Allow the LLM to set/refine their own search queries
-- [ ] Make it so that you can refer to other columns in the prompt
+- [x] Make it so that you can refer to other columns in the prompt
 - [ ] Make the search optional, some prompts may only need data that is already available

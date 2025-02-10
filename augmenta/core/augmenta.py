@@ -78,11 +78,14 @@ async def process_row(
         urls_text = await extract_urls(urls)
         urls_docs = prepare_docs(urls_text)
         
-        # Prepare prompt
-        prompt_user = (
-            f'{urls_docs}\n\n'
-            f'{config["prompt"]["user"].replace("{{research_keyword}}", query)}'
-        )
+        # Prepare prompt by replacing all {{column}} placeholders with values from the row
+        prompt_user = config["prompt"]["user"]
+        for column in row.index:
+            placeholder = f"{{{{{column}}}}}"
+            if placeholder in prompt_user:
+                prompt_user = prompt_user.replace(placeholder, str(row[column]))
+        
+        prompt_user = f'{urls_docs}\n\n{prompt_user}'
         
         Structure = create_structure_class(config["config_path"])
         
