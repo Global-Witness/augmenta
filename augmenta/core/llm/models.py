@@ -1,4 +1,4 @@
-from typing import Type, Any
+from typing import Type
 from pydantic import BaseModel, create_model, Field
 import yaml
 

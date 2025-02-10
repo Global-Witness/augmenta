@@ -24,6 +24,8 @@ class CredentialsManager:
         model = config["model"]["name"].lower()
         if model.startswith("openai"):
             required_keys.add("OPENAI_API_KEY")
+        elif model.startswith("anthropic"):
+            required_keys.add("ANTHROPIC_API_KEY")
             
         return required_keys
         

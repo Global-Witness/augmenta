@@ -1,6 +1,5 @@
 from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
-import instructor
 
 class OutputValidator:
     """Handles structured output validation and parsing for LLM responses"""

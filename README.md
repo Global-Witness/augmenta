@@ -61,7 +61,7 @@ python -m pytest
 - [ ] Check for proper package structure stuff
 - [ ] Test support for various models (Claude, Deepseek, etc)
 - [ ] Validation of output
-  - [ ] [Outlines](https://dottxt-ai.github.io/outlines/latest/welcome/) or [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
+  - [x] [Outlines](https://dottxt-ai.github.io/outlines/latest/welcome/) or [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
   - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
   - [ ] Declare possible outputs in the YAML
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)

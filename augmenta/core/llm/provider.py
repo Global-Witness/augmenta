@@ -7,7 +7,7 @@ from .validation import OutputValidator
 class LLMProvider:
     """LiteLLM-based provider implementation with instructor support"""
     
-    def __init__(self, model: str = "openai/gpt-4-turbo-preview"):
+    def __init__(self, model: str):
         self.model = model
         router = Router(
             model_list=[{

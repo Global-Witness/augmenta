@@ -1,7 +1,7 @@
 input_csv: tests/orcl/orcl-standardised.csv
 output_csv: tests/orcl/orcl-output.csv
 model:
-  name: openai/gpt-4o-mini
+  name: anthropic/claude-3-5-haiku-latest
   rate_limit: 10
 # token_limit: 20000
 query_col: org

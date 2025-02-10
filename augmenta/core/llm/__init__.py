@@ -10,7 +10,7 @@ _rate_limiter = None
 async def make_request_llm(
     prompt_system: str,
     prompt_user: str,
-    model: str = "openai/gpt-4o-mini",
+    model: str,
     response_format: Optional[Type[BaseModel]] = None,
     rate_limit: Optional[float] = None
 ) -> Union[str, dict, BaseModel]:
