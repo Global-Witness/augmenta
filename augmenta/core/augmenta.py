@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from augmenta.core.search import search_web
 from augmenta.core.extractors import extract_urls
-from augmenta.core.prompt import prepare_docs, append_structure
+from augmenta.core.prompt import prepare_docs
 from augmenta.core.llm import make_request_llm, InstructorHandler
 from augmenta.core.cache import CacheManager
 from augmenta.core.config.credentials import CredentialsManager
@@ -87,9 +87,9 @@ async def process_row(
         
         prompt_user = f'{urls_docs}\n\n{prompt_user}'
         
-        # Add structure format to prompt if structure is defined
-        if "structure" in config:
-            prompt_user = append_structure(prompt_user, config["structure"])
+        # # Add structure format to prompt if structure is defined
+        # if "structure" in config:
+        #     prompt_user = append_structure(prompt_user, config["structure"])
         
         # Create structure class using InstructorHandler
         Structure = InstructorHandler.create_structure_class(config["config_path"])

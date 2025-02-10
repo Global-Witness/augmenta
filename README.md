@@ -58,6 +58,7 @@ python -m pytest
 - [x] Test support for various models (Claude, Deepseek, etc)
 - [ ] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
+  - [ ] Remove output from the prompt
   - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
   - [ ] Declare possible outputs in the YAML
 - [ ] Add LLM token limits, triming function, rate limiting

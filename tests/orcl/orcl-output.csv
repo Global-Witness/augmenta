@@ -1,44 +1,23 @@
 org,n,think,org_type,industry,explanation,confidence
-Global Witness,43.0,"Global Witness is an international non-profit organization focused on investigating and exposing abuses related to natural resources, environmental exploitation, and human rights. Key activities include:
-- Investigating natural resource extraction (diamonds, oil, timber, minerals)
-- Exposing corruption in extractive industries
-- Advocating for environmental and human rights defenders
-- Campaigning against climate change and fossil fuel industries
-- Documenting environmental activist killings
-- Pushing for transparency in resource industries
+London Assembly,43,"This is clearly a government body, specifically a local/regional government entity with elected representatives. It is not a company, environmental group, or educational institution, but a democratic governance structure for London.",other,government department,"The London Assembly is a devolved regional governance body for Greater London, established in 2000 as part of the Greater London Authority (GLA). It is a public sector entity with 25 elected members responsible for scrutinizing the Mayor of London's activities and holding the mayor accountable. 
 
-Their mission is clearly aligned with environmental protection and social justice, not promoting fossil fuel interests.",NGO or trade group,conservation or environmental group,"Global Witness is an international non-profit environmental organization that investigates and campaigns against environmental and human rights abuses. Founded in 1993, they focus on exposing corruption in natural resource industries and protecting environmental defenders. 
+Key characteristics:
+- Established by the Greater London Authority Act 1999
+- Part of local government structure in London
+- Serves a strategic administrative role for Greater London
+- Conducts public meetings, investigates city issues, and reviews mayoral policies
+- Responsible for areas like transport, policing, economic development, and fire services through functional bodies
 
-Key evidence includes their work on:
-- Investigating conflict diamonds and resource exploitation
-- Tracking environmental activist killings
-- Campaigning against fossil fuel companies
-- Promoting transparency in extractive industries
+Sources:
+- [Greater London Authority Wikipedia page](https://en.wikipedia.org/wiki/Greater_London_Authority)
+- [London Assembly official website](https://www.london.gov.uk/who-we-are/what-london-assembly-does)",very_confident
+OPEC,40,,NGO or trade group,fossil fuel organisation,"OPEC (Organization of the Petroleum Exporting Countries) is an intergovernmental organization of oil-producing countries that works to coordinate and influence the global oil market. Founded in 1960, OPEC currently has 12 member countries that collectively account for approximately 38% of global oil production and 79.5% of the world's proven oil reserves. 
 
-See their [official website](https://www.globalwitness.org/) and [Wikipedia entry](https://en.wikipedia.org/wiki/Global_Witness) for more details.",very_confident
-National Grid,40.0,"National Grid is a utility company that:
-- Delivers electricity and natural gas to over 20 million people in New York and Massachusetts
-- Focuses on energy transmission and distribution
-- Claims to be working towards a clean energy future and eliminating fossil fuels by 2050
-- Is a publicly listed utility company
-- Operates as a for-profit entity in the energy sector
+Key characteristics:
+- Described as a ""cartel"" that enables cooperation among leading oil-producing countries
+- Aims to collectively influence global oil markets and maximize profit
+- Coordinates oil production and pricing strategies among member nations
 
-Primary activities: Energy transmission, distribution, and grid management
-Interests represented: Customers in the Northeast US, energy infrastructure development",for-profit company,fossil fuel organisation,"National Grid is a for-profit utility company that currently operates in the fossil fuel energy sector, despite its claims of moving towards clean energy. According to their website, they are [""one of the world's largest publicly listed utilities focused on transmission and distribution of electricity and gas""](https://www.nationalgrid.com/us). While they have a vision to eliminate fossil fuels by 2050, they currently distribute natural gas and operate as a traditional energy utility, which classifies them as a fossil fuel organisation.",very_confident
-"City, University of London",,"City, University of London is clearly an educational institution:
-- Founded in 1894, originally as the Northampton Institute
-- Part of the University of London
-- Offers undergraduate, postgraduate, and research degrees
-- Divided into six academic schools including Business, Law, Health Sciences, etc.
-- Has over 20,000 students and 150,000 alumni
-- Focuses on education, research, and professional skill development
-- Located in central London
-- Recently merged with St George's, University of London in August 2024
+While not a traditional company, OPEC is fundamentally an organization focused on fossil fuel production and trade, making it clearly a fossil fuel organisation of the type ""NGO or trade group"".
 
-The documents consistently describe it as a public research university with a strong focus on professional education and career preparation.",other,educational instutution,"City, University of London is a public research university located in the heart of London. Established in 1894, it offers a wide range of undergraduate and postgraduate degrees across six academic schools. The university is known for its strong links to business and industry, focusing on professional education and career development. 
-
-Key sources:
-- [Wikipedia entry](https://en.wikipedia.org/wiki/City,_University_of_London)
-- [University's official website](https://www.city.ac.uk/)
-
-Interestingly, the university has recently demonstrated commitment to sustainability, announcing its divestment from fossil fuel producers in July 2023, which further underscores its educational and socially responsible mission.",very_confident
+Source: [https://en.wikipedia.org/wiki/OPEC]",very_confident

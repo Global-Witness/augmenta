@@ -49,7 +49,13 @@ class InstructorHandler:
                     Field(default=None, description=description)
                 )
             
-            return create_model('Structure', **fields, __base__=BaseModel)
+            StructureClass = create_model('Structure', **fields, __base__=BaseModel)
+            
+            # # Print the schema
+            # print("\nGenerated Pydantic Model Schema:")
+            # print(StructureClass.model_json_schema())
+            
+            return StructureClass
             
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML file: {e}")
