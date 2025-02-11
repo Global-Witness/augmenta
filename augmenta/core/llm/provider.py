@@ -1,7 +1,10 @@
 from typing import Optional, Type, Union
 from pydantic import BaseModel
 from .instructor_handler import InstructorHandler
-from litellm.utils import trim_messages  # Add this import
+from litellm.utils import trim_messages
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LLMProvider:
     """LiteLLM-based provider implementation with instructor support"""
@@ -29,7 +32,13 @@ class LLMProvider:
             {"role": "user", "content": prompt_user}
         ]
         
-        # Trim messages if max_tokens is specified
-        messages = trim_messages(messages, self.model, max_tokens=self.max_tokens)
+        try:
+            # Trim messages based on whether max_tokens is specified
+            if self.max_tokens is not None:
+                messages = trim_messages(messages, max_tokens=self.max_tokens)
+            else:
+                messages = trim_messages(messages, model=self.model)
+        except Exception as e:
+            logger.warning("Message trimming failed, using original messages.")
         
         return await self.instructor.complete_structured(messages, response_format)

@@ -20,13 +20,6 @@ class CredentialsManager:
             required_keys.add("OXYLABS_USERNAME")
             required_keys.add("OXYLABS_PASSWORD")
             
-        # LLM provider requirements
-        model = config["model"]["name"].lower()
-        if model.startswith("openai"):
-            required_keys.add("OPENAI_API_KEY")
-        elif model.startswith("anthropic"):
-            required_keys.add("ANTHROPIC_API_KEY")
-            
         return required_keys
         
     def get_credentials(self, config: dict) -> Dict[str, str]:

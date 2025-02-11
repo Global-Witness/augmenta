@@ -1,4 +1,4 @@
-from typing import Type, Optional, Union, Literal, get_args
+from typing import Type, Optional, Union, Literal
 from pathlib import Path
 from pydantic import BaseModel, create_model, Field
 import yaml
@@ -42,38 +42,23 @@ class InstructorHandler:
                 
             fields = {}
             for field_name, field_info in yaml_content['structure'].items():
-                field_type = TYPE_MAPPING.get(field_info['type'], str)
                 description = field_info.get('description', '')
                 
                 # Handle options field by creating a Literal type
                 if 'options' in field_info:
-                    options = tuple(field_info['options'])
-                    field_type = Literal[options]  # type: ignore
+                    # Convert options to tuple of strings for Literal
+                    options = tuple(str(opt) for opt in field_info['options'])
+                    field_type = Literal[options]
+                else:
+                    field_type = TYPE_MAPPING.get(field_info['type'], str)
                 
                 fields[field_name] = (
                     field_type, 
-                    Field(
-                        default=None, 
-                        description=description,
-                        # Include options in field metadata if present
-                        json_schema_extra={
-                            'options': field_info['options']
-                        } if 'options' in field_info else None
-                    )
+                    Field(description=description)
                 )
             
-            StructureClass = create_model('Structure', **fields, __base__=BaseModel)
-            
-            # Add validation to ensure values match options
-            for field_name, field_info in yaml_content['structure'].items():
-                if 'options' in field_info:
-                    field = StructureClass.model_fields[field_name]
-                    field.json_schema_extra = {
-                        'options': field_info['options']
-                    }
-            
-            return StructureClass
-            
+            return create_model('Structure', **fields, __base__=BaseModel)
+                
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML file: {e}")
 

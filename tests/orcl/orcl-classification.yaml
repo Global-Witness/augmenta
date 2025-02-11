@@ -1,7 +1,7 @@
-input_csv: tests/orcl/orcl-standardised.csv
+input_csv: tests/orcl/orcl.csv
 output_csv: tests/orcl/orcl-output.csv
 model:
-  name: anthropic/claude-3-5-haiku-latest
+  name: gemini/gemini-2.0-flash
   # rate_limit: 1
   # max_tokens: 20000
 query_col: org
@@ -39,4 +39,8 @@ structure:
     description: A brief explanation of your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one URL.
   confidence:
     type: str
-    description: Your confidence level in the decision (very_confident, somewhat_confident, not_confident). If you don't have enough information or the documents refer to different organisations that may share a name, please set this to `not_confident`.
+    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not_confident".
+    options:
+      - very_confident
+      - somewhat_confident
+      - not_confident

@@ -18,7 +18,7 @@ logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
 
 def prompt_for_api_keys(config_data):
     """
-    Prompt user for API keys if they're not set
+    Prompt user for search engine API keys if they're not set
     
     Args:
         config_data: The loaded configuration dictionary

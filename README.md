@@ -53,6 +53,7 @@ python -m pytest
   - [x] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Caching (for resuming interrupted augmentations) using SQLite
   - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
+  - [ ] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
 - [x] Progress bar for the CLI
 - [ ] Validation of output
@@ -60,7 +61,7 @@ python -m pytest
   - [x] Remove output from the prompt
   - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
 - [x] Add LLM token limits, triming function, rate limiting
-- [ ] Scrape via proxy (oxylabs)
+- [ ] Models don't see the field description, I think. [Switch from Literal to Enum](https://python.useinstructor.com/concepts/enums/)?
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Tests
   - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
@@ -74,5 +75,6 @@ python -m pytest
 - [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
 - [ ] Allow the LLM to set/refine their own search queries
 - [x] Make it so that you can refer to other columns in the prompt
-- [ ] Make the search optional, some prompts may only need data that is already available
+- [ ] Make the search optional, some prompts may only need data that is already available in other columns
+- [ ] Scrape via proxy (oxylabs)
 - [ ] Cost (and [energy](https://huggingface.co/blog/sasha/announcing-ai-energy-score)?) tracker

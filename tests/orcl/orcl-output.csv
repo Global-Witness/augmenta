@@ -1,11 +1,5 @@
 org,n,org_type,industry,explanation,confidence
-London Assembly,43,other,government department,"The London Assembly is a government body that is part of the Greater London Authority. It is a 25-member elected body that scrutinizes the activities of the Mayor of London and has the power to review and amend budgets and strategies. It was established in 2000 and serves as a local government institution for London, with members elected using a proportional representation system. 
+Wind Europe,43,NGO or trade group,other,WindEurope's website ([https://windeurope.org/](https://windeurope.org/)) describes the organisation as promoting wind energy in Europe. It acts as a forum for renewable energy sourcing and aims to remove barriers to renewable energy procurement. It is a trade group.,very_confident
+BP,40,for-profit company,fossil fuel organisation,"BP is one of the world's leading international oil and gas companies. It is involved in oil and gas exploration, production, refining, and distribution. Although BP has invested in renewable energy sources, it remains primarily a fossil fuel company. Therefore, I classify BP as a fossil fuel company.  
 
-Key evidence:
-- Described as ""part of the Greater London Authority""
-- Comprises 25 elected members
-- Has powers to review mayoral budgets and strategies
-- Operates various committees on topics like environment, housing, transport, and police oversight
-
-[Source: https://en.wikipedia.org/wiki/London_Assembly]",very_confident
-OPEC,40,NGO or trade group,fossil fuel organisation,"OPEC (Organization of the Petroleum Exporting Countries) is an intergovernmental organization of major oil-producing countries that coordinates and unifies the petroleum policies of its member states. It is a trade group focused on the global oil industry, representing key fossil fuel-producing nations like Saudi Arabia, Iran, Venezuela, and others. OPEC's primary purpose is to regulate oil production and pricing, making it fundamentally a fossil fuel trade organization that plays a critical role in the global oil market.",very_confident
+",very_confident
