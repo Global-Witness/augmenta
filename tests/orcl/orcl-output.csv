@@ -1,5 +1,5 @@
-org,n,org_type,industry,explanation,confidence
-Wind Europe,43,NGO or trade group,other,WindEurope's website ([https://windeurope.org/](https://windeurope.org/)) describes the organisation as promoting wind energy in Europe. It acts as a forum for renewable energy sourcing and aims to remove barriers to renewable energy procurement. It is a trade group.,very_confident
-BP,40,for-profit company,fossil fuel organisation,"BP is one of the world's leading international oil and gas companies. It is involved in oil and gas exploration, production, refining, and distribution. Although BP has invested in renewable energy sources, it remains primarily a fossil fuel company. Therefore, I classify BP as a fossil fuel company.  
+org,org_type,industry,explanation,confidence,examples
+Global Witness,NGO or trade group,conservation or environmental group,"Global Witness is an international NGO that works to break the links between natural resource exploitation, conflict, poverty, corruption, and human rights abuses worldwide. It has worked on diamonds, oil, timber, cocoa, gas, gold and other minerals. It also campaigns to protect human rights defenders targeted because of their work to prevent natural resource exploitation. 
 
-",very_confident
+[https://en.wikipedia.org/wiki/Global_Witness](https://en.wikipedia.org/wiki/Global_Witness)
+[https://www.globalwitness.org/en/](https://www.globalwitness.org/en/)",very confident,None

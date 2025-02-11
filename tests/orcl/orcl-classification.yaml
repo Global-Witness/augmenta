@@ -7,7 +7,7 @@ model:
 query_col: org
 search:
   engine: brave
-  results: 1
+  results: 2
   rate_limit: 2
 prompt:
   system: You are an expert researcher whose job is to classify companies based on their industry affiliation. You will be provided a collection of documents collected from Google search results for a company. You will determine what industry that company or trade group belongs to.
@@ -39,8 +39,26 @@ structure:
     description: A brief explanation of your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one URL.
   confidence:
     type: str
-    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not_confident".
+    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not confident".
     options:
-      - very_confident
-      - somewhat_confident
-      - not_confident
+      - very confident
+      - somewhat confident
+      - not confident
+  examples:
+    type: string
+    description: Which example organisations were offered in the prompt? Name the organisations.
+examples:
+  - input: "ExxonMobil"
+    output:
+      org_type: for-profit company
+      industry: fossil fuel organisation
+      explanation: |
+        [ExxonMobil](https://corporate.exxonmobil.com/) is a multinational oil and gas corporation. The company is involved in the exploration, production, refining, and distribution of oil and gas.
+      confidence: very confident
+  - input: "Greenpeace"
+    output:
+      org_type: NGO or trade group
+      industry: conservation or environmental group
+      explanation: |
+        [Greenpeace](https://www.greenpeace.org/) is an environmental organisation [with a stated goal](https://en.wikipedia.org/wiki/Greenpeace) of "ensuring the ability of the Earth to nurture life in all its diversity".
+      confidence: very confident

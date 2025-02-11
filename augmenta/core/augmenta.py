@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from augmenta.core.search import search_web
 from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import prepare_docs
+from augmenta.core.prompt.formatter_examples import ExampleFormatter
 from augmenta.core.llm import make_request_llm, InstructorHandler
 from augmenta.core.cache import CacheManager
 from augmenta.core.config.credentials import CredentialsManager
@@ -85,8 +86,16 @@ async def process_row(
             if placeholder in prompt_user:
                 prompt_user = prompt_user.replace(placeholder, str(row[column]))
         
-        # Put prompt first, then documents
-        prompt_user = f'{prompt_user}\n\n## Here are the documents to analyze:\n\n{urls_docs}'
+        # Format examples if they exist in the config
+        if examples_yaml := config["prompt"].get("examples"):
+            examples_text = ExampleFormatter.format_examples(examples_yaml)
+            if examples_text:
+                prompt_user = f'{prompt_user}\n\n{examples_text}'
+        
+        # Add documents section
+        prompt_user = f'{prompt_user}\n\n## Documents\n\n{urls_docs}'
+
+        print(prompt_user)
         
         # Create structure class using InstructorHandler
         Structure = InstructorHandler.create_structure_class(config["config_path"])

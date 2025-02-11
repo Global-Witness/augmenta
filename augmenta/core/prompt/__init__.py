@@ -1,4 +1,4 @@
-from .formatter import DocumentFormatter
+from .formatter_docs import DocumentFormatter
 from .templates import PromptTemplates
 
 def prepare_docs(scraped_content):

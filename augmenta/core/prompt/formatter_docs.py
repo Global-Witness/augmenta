@@ -8,7 +8,7 @@ class DocumentFormatter:
     def format_docs(scraped_content: List[Tuple[str, Optional[str]]]) -> str:
         """Format scraped content into XML structure"""
         if not scraped_content:
-            return "<documents></documents>"
+            return "<documents>\n</documents>"
 
         # Filter out entries with None content
         valid_content = [(url, text) for url, text in scraped_content if text]
