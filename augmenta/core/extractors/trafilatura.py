@@ -1,30 +1,96 @@
-from typing import Optional
+import asyncio
+from typing import Optional, Final
 import logging
 import aiohttp
-from aiohttp import ClientTimeout
+from aiohttp import ClientTimeout, ClientError
 from trafilatura import extract
-from .base import TextExtractor
+from trafilatura.settings import use_config
+from .base import TextExtractor, ExtractionError
 
 logger = logging.getLogger(__name__)
 
 class TrafilaturaExtractor(TextExtractor):
-    """Text extractor using Trafilatura"""
+    """Text extractor using Trafilatura library"""
+    
+    MAX_CONTENT_SIZE: Final[int] = 10 * 1024 * 1024  # 10MB
+    MAX_RETRIES: Final[int] = 3
+    RETRY_DELAY: Final[float] = 1.0
+    
+    def __init__(self) -> None:
+        super().__init__()
+        # Configure trafilatura for better extraction
+        self.config = use_config()
+        self.config.set("DEFAULT", "MIN_EXTRACTED_SIZE", "50")
+        self.config.set("DEFAULT", "MIN_OUTPUT_SIZE", "50")
     
     async def extract(self, url: str, timeout: int = 30) -> Optional[str]:
-        """Extract text content from URL using Trafilatura"""
-        if not self.validate_url(url):
-            return None
+        """
+        Extract text content from URL using Trafilatura.
+        
+        Args:
+            url: URL to extract content from
+            timeout: Timeout in seconds
             
-        try:
-            timeout_settings = ClientTimeout(total=timeout)
-            async with aiohttp.ClientSession(timeout=timeout_settings) as session:
-                async with session.get(url, allow_redirects=True) as response:
-                    if response.status == 200:
+        Returns:
+            Optional[str]: Extracted text or None if extraction failed
+            
+        Raises:
+            ExtractionError: If there's an error during extraction
+        """
+        if not self.validate_url(url):
+            logger.warning(f"Invalid URL format: {url}")
+            return None
+        
+        timeout_settings = ClientTimeout(
+            total=timeout,
+            connect=timeout/3,
+            sock_read=timeout
+        )
+        
+        for attempt in range(self.MAX_RETRIES):
+            try:
+                async with aiohttp.ClientSession(timeout=timeout_settings) as session:
+                    async with session.get(
+                        url,
+                        allow_redirects=True,
+                        ssl=True
+                    ) as response:
+                        if response.status != 200:
+                            logger.warning(
+                                f"HTTP {response.status} for {url}"
+                            )
+                            return None
+                        
+                        content_type = response.headers.get('content-type', '')
+                        if not content_type.startswith('text/'):
+                            logger.warning(
+                                f"Unsupported content type {content_type} for {url}"
+                            )
+                            return None
+                        
                         content = await response.text()
-                        return extract(content, output_format="markdown")
-            return None
+                        if not content:
+                            return None
+                            
+                        extracted = extract(
+                            content,
+                            config=self.config,
+                            output_format="markdown",
+                            include_tables=True
+                        )
+                        
+                        return extracted if extracted and len(extracted) >= 50 else None
+                        
+            except ClientError as e:
+                if attempt == self.MAX_RETRIES - 1:
+                    logger.error(f"Network error for {url}: {str(e)}")
+                    return None
+                await asyncio.sleep(self.RETRY_DELAY * (attempt + 1))
                 
-        except Exception as e:
-            # Changed to debug level since this is expected behavior
-            logger.debug(f"Could not extract content from {url}: {str(e)}")
-            return None
+            except Exception as e:
+                raise ExtractionError(
+                    message=f"Extraction failed: {str(e)}",
+                    url=url
+                ) from e
+        
+        return None

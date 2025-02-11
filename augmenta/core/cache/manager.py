@@ -6,7 +6,7 @@ import logging
 import atexit
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, Generator, Tuple, List
 from queue import Queue, Empty
 from contextlib import contextmanager
 from .models import ProcessStatus, DatabaseError
@@ -14,37 +14,59 @@ from .models import ProcessStatus, DatabaseError
 logger = logging.getLogger(__name__)
 
 class CacheManager:
-    """Manages caching of process results"""
+    """
+    Thread-safe singleton manager for caching process results in SQLite.
+    
+    Implements a write-ahead logging pattern with a background writer thread
+    to improve performance and prevent blocking operations.
+    
+    Attributes:
+        cache_dir: Directory where cache files are stored
+        db_path: Path to the SQLite database file
+        is_running: Flag indicating if the writer thread is active
+    """
     
     _instance: Optional['CacheManager'] = None
     _lock = threading.Lock()
     
     def __new__(cls, *args, **kwargs) -> 'CacheManager':
-        with cls._lock:
-            if cls._instance is None:
-                cls._instance = super().__new__(cls)
-            return cls._instance
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
     
-    def __init__(self, cache_dir: Optional[Path] = None):
-        if hasattr(self, 'initialized'):
-            return
-            
-        self.cache_dir = cache_dir or Path.home() / '.augmenta' / 'cache'
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.db_path = self.cache_dir / 'cache.db'
-        self.write_queue: Queue = Queue()
-        self.is_running = True
+    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+        """
+        Initialize the cache manager. Thread-safe singleton initialization.
         
-        self._init_db()
-        self._start_writer_thread()
-        atexit.register(self.cleanup)
-        self.initialized = True
+        Args:
+            cache_dir: Optional custom cache directory path
+        """
+        with self._lock:
+            if hasattr(self, 'initialized'):
+                return
+                
+            self.cache_dir = cache_dir or Path.home() / '.augmenta' / 'cache'
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            self.db_path = self.cache_dir / 'cache.db'
+            self.write_queue: Queue = Queue()
+            self.is_running = True
+            
+            self._init_db()
+            self._start_writer_thread()
+            atexit.register(self.cleanup)
+            self.initialized = True
     
     def _init_db(self) -> None:
-        """Initialize the database schema"""
+        """
+        Initialize the database schema with proper indexes and constraints.
+        Creates tables if they don't exist.
+        """
         with self._get_connection() as conn:
             conn.executescript('''
                 PRAGMA foreign_keys = ON;
+                PRAGMA journal_mode = WAL;
                 
                 CREATE TABLE IF NOT EXISTS processes (
                     process_id TEXT PRIMARY KEY,
@@ -69,15 +91,27 @@ class CacheManager:
                 
                 CREATE INDEX IF NOT EXISTS idx_process_status 
                 ON processes(status, last_updated);
+                
+                CREATE INDEX IF NOT EXISTS idx_config_hash
+                ON processes(config_hash, last_updated);
             ''')
     
     @contextmanager
-    def _get_connection(self) -> sqlite3.Connection:
-        """Get a database connection with retry logic"""
+    def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
+        """
+        Get a database connection with retry logic and proper error handling.
+        
+        Yields:
+            sqlite3.Connection: Database connection with row factory enabled
+            
+        Raises:
+            DatabaseError: If connection fails after max retries
+        """
         MAX_RETRIES = 3
         DB_TIMEOUT = 30.0
         
         for attempt in range(MAX_RETRIES):
+            conn = None
             try:
                 conn = sqlite3.connect(
                     self.db_path,
@@ -87,16 +121,17 @@ class CacheManager:
                 conn.row_factory = sqlite3.Row
                 yield conn
                 conn.commit()
-                break
+                return
             except sqlite3.OperationalError as e:
                 if attempt == MAX_RETRIES - 1:
                     raise DatabaseError(f"Database connection failed: {e}")
                 logger.warning(f"Database connection attempt {attempt + 1} failed, retrying...")
             finally:
-                conn.close()
+                if conn:
+                    conn.close()
     
     def _start_writer_thread(self) -> None:
-        """Start the background writer thread"""
+        """Start the background writer thread for async database operations."""
         self.writer_thread = threading.Thread(
             target=self._process_write_queue,
             daemon=True,
@@ -105,22 +140,54 @@ class CacheManager:
         self.writer_thread.start()
     
     def _process_write_queue(self) -> None:
-        """Process the write queue in a separate thread"""
+        """
+        Process the write queue in a separate thread.
+        Handles database write operations asynchronously.
+        """
         QUEUE_TIMEOUT = 1.0
+        BATCH_SIZE = 100
+        batch: List[Tuple[str, tuple]] = []
         
         while self.is_running or not self.write_queue.empty():
             try:
-                item = self.write_queue.get(timeout=QUEUE_TIMEOUT)
-                with self._get_connection() as conn:
-                    query, params = item
-                    conn.execute(query, params)
-            except Empty:
-                continue
+                # Collect items for batch processing
+                try:
+                    while len(batch) < BATCH_SIZE:
+                        item = self.write_queue.get(timeout=QUEUE_TIMEOUT)
+                        batch.append(item)
+                except Empty:
+                    pass
+                
+                # Process batch if not empty
+                if batch:
+                    with self._get_connection() as conn:
+                        for query, params in batch:
+                            conn.execute(query, params)
+                    batch.clear()
+                    
             except Exception as e:
                 logger.error(f"Error processing write queue: {e}")
+                if batch:
+                    logger.error(f"Failed batch size: {len(batch)}")
+                batch.clear()
     
     def start_process(self, config_hash: str, total_rows: int) -> str:
-        """Start a new process and return its ID"""
+        """
+        Start a new process and return its ID.
+        
+        Args:
+            config_hash: Hash of the configuration
+            total_rows: Total number of rows to process
+            
+        Returns:
+            str: Unique process ID
+            
+        Raises:
+            ValueError: If total_rows is negative
+        """
+        if total_rows < 0:
+            raise ValueError("total_rows must be non-negative")
+            
         process_id = str(uuid.uuid4())
         current_time = datetime.now()
         
@@ -139,7 +206,15 @@ class CacheManager:
         query: str,
         result: str
     ) -> None:
-        """Cache a result for a specific row"""
+        """
+        Cache a result for a specific row.
+        
+        Args:
+            process_id: Process identifier
+            row_index: Index of the processed row
+            query: Query that generated the result
+            result: JSON-serializable result data
+        """
         current_time = datetime.now()
         
         self.write_queue.put((
@@ -158,7 +233,15 @@ class CacheManager:
         ))
     
     def get_cached_results(self, process_id: str) -> Dict[int, Any]:
-        """Get all cached results for a process"""
+        """
+        Get all cached results for a process.
+        
+        Args:
+            process_id: Process identifier
+            
+        Returns:
+            Dict[int, Any]: Dictionary mapping row indices to their results
+        """
         with self._get_connection() as conn:
             rows = conn.execute(
                 "SELECT row_index, result FROM results_cache WHERE process_id = ?",
@@ -167,7 +250,15 @@ class CacheManager:
             return {row['row_index']: json.loads(row['result']) for row in rows}
     
     def get_process_status(self, process_id: str) -> Optional[ProcessStatus]:
-        """Get the status of a process"""
+        """
+        Get the status of a process.
+        
+        Args:
+            process_id: Process identifier
+            
+        Returns:
+            Optional[ProcessStatus]: Process status if found, None otherwise
+        """
         with self._get_connection() as conn:
             row = conn.execute(
                 "SELECT * FROM processes WHERE process_id = ?",
@@ -179,7 +270,15 @@ class CacheManager:
             return None
     
     def find_unfinished_process(self, config_hash: str) -> Optional[ProcessStatus]:
-        """Find the most recent unfinished process for a config hash"""
+        """
+        Find the most recent unfinished process for a config hash.
+        
+        Args:
+            config_hash: Hash of the configuration
+            
+        Returns:
+            Optional[ProcessStatus]: Most recent unfinished process if found
+        """
         with self._get_connection() as conn:
             row = conn.execute("""
                 SELECT * FROM processes 
@@ -194,7 +293,15 @@ class CacheManager:
             return None
     
     def get_process_summary(self, process: ProcessStatus) -> str:
-        """Get a human-readable summary of a process"""
+        """
+        Get a human-readable summary of a process.
+        
+        Args:
+            process: Process status object
+            
+        Returns:
+            str: Formatted summary string
+        """
         time_diff = datetime.now() - process.last_updated
         if time_diff.days > 0:
             time_ago = f"{time_diff.days} days ago"
@@ -205,11 +312,20 @@ class CacheManager:
             
         return (
             f"Found unfinished process from {time_ago}\n"
-            f"Progress: {process.processed_rows}/{process.total_rows} rows completed"
+            f"Progress: {process.processed_rows}/{process.total_rows} rows "
+            f"({process.progress:.1f}%)"
         )
     
     def cleanup_old_processes(self, days: int = 30) -> None:
-        """Clean up processes older than specified days"""
+        """
+        Clean up processes older than specified days.
+        
+        Args:
+            days: Number of days to keep, defaults to 30
+            
+        Raises:
+            ValueError: If days is negative
+        """
         if days < 0:
             raise ValueError("days must be non-negative")
             
@@ -221,7 +337,10 @@ class CacheManager:
             )
     
     def cleanup(self) -> None:
-        """Cleanup method called on program exit"""
+        """
+        Cleanup method called on program exit.
+        Ensures proper shutdown of background thread.
+        """
         self.is_running = False
         if hasattr(self, 'writer_thread'):
             try:

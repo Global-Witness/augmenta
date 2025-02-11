@@ -1,15 +1,27 @@
-from typing import Type, Optional, Union, Literal
+from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal
 from pathlib import Path
-from pydantic import BaseModel, create_model, Field
+from functools import lru_cache
+from pydantic import BaseModel, Field, create_model
 import yaml
 import instructor
 from litellm import Router
 
 class InstructorHandler:
-    """Centralized handler for instructor-based structured output processing"""
+    """Handles structured output processing using instructor"""
+    
+    # Type mapping for YAML to Python types
+    TYPE_MAPPING: ClassVar[Dict[str, type]] = {
+        'str': str, 'bool': bool, 'int': int,
+        'float': float, 'dict': dict, 'list': list
+    }
     
     def __init__(self, model: str):
-        """Initialize the instructor handler with a specific model"""
+        """
+        Initialize with model configuration
+        
+        Args:
+            model: Model identifier
+        """
         router = Router(
             model_list=[{
                 "model_name": model,
@@ -21,72 +33,80 @@ class InstructorHandler:
         self.model = model
 
     @staticmethod
+    @lru_cache(maxsize=32)
     def create_structure_class(yaml_file_path: Union[str, Path]) -> Type[BaseModel]:
-        """Creates a Pydantic model class from YAML structure"""
-        TYPE_MAPPING = {
-            'str': str,
-            'bool': bool,
-            'int': int,
-            'float': float,
-            'dict': dict,
-            'list': list,
-        }
+        """
+        Creates a cached Pydantic model from YAML structure
         
+        Args:
+            yaml_file_path: Path to YAML structure definition
+            
+        Returns:
+            Pydantic model class
+            
+        Raises:
+            ValueError: Invalid YAML or structure
+        """
         yaml_file_path = Path(yaml_file_path)
+        
         try:
             with open(yaml_file_path, 'r', encoding='utf-8') as f:
                 yaml_content = yaml.safe_load(f)
                 
-            if 'structure' not in yaml_content:
-                raise KeyError("YAML file must contain a 'structure' key")
+            if not isinstance(yaml_content, dict) or 'structure' not in yaml_content:
+                raise ValueError("YAML must contain a 'structure' dictionary")
                 
-            fields = {}
+            fields: Dict[str, tuple] = {}
             for field_name, field_info in yaml_content['structure'].items():
-                description = field_info.get('description', '')
+                if not isinstance(field_info, dict):
+                    raise ValueError(f"Invalid field definition for {field_name}")
                 
                 # Handle options field by creating a Literal type
                 if 'options' in field_info:
-                    # Convert options to tuple of strings for Literal
                     options = tuple(str(opt) for opt in field_info['options'])
                     field_type = Literal[options]
                 else:
-                    field_type = TYPE_MAPPING.get(field_info['type'], str)
+                    field_type = InstructorHandler.TYPE_MAPPING.get(
+                        field_info.get('type', 'str'),
+                        str
+                    )
                 
                 fields[field_name] = (
-                    field_type, 
-                    Field(description=description)
+                    field_type,
+                    Field(description=field_info.get('description', ''))
                 )
             
             return create_model('Structure', **fields, __base__=BaseModel)
                 
-        except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML file: {e}")
+        except (yaml.YAMLError, OSError) as e:
+            raise ValueError(f"Failed to parse YAML: {e}")
 
     async def complete_structured(
         self,
-        messages: list,
+        messages: list[dict[str, str]],
         response_format: Optional[Type[BaseModel]] = None
-    ) -> Union[str, dict, BaseModel]:
+    ) -> Union[str, dict[str, Any], BaseModel]:
         """
-        Generate a structured completion using instructor
+        Generate structured or unstructured completion
         
         Args:
-            messages: List of message dictionaries
-            response_format: Optional Pydantic model for response structure
+            messages: List of role/content message pairs
+            response_format: Optional Pydantic model for structure
             
         Returns:
-            Union[str, dict, BaseModel]: Structured response based on the provided format
+            Structured or unstructured response
+            
+        Raises:
+            RuntimeError: Request or parsing failed
         """
         try:
             if response_format is None:
-                # Regular completion without structured output
                 response = await self.client.chat.completions.create(
                     model=self.model,
                     messages=messages
                 )
                 return response.choices[0].message.content
             
-            # Use instructor for structured output
             result = await self.client.chat.completions.create(
                 model=self.model,
                 response_model=response_format,
@@ -96,4 +116,4 @@ class InstructorHandler:
             return result.model_dump()
                 
         except Exception as e:
-            raise RuntimeError(f"LLM request failed: {str(e)}")
+            raise RuntimeError(f"LLM request failed: {e}")

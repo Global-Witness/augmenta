@@ -60,7 +60,8 @@ python -m pytest
 - [x] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
   - [x] Remove output from the prompt
-  - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
+  - [ ] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
+    - [ ] This isn't working properly (with Gemini, for example)
 - [x] Add LLM token limits, triming function, rate limiting
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Tests

@@ -1,15 +1,22 @@
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
+import logging
 from .instructor_handler import InstructorHandler
 from litellm.utils import trim_messages
-import logging
 
 logger = logging.getLogger(__name__)
 
 class LLMProvider:
-    """LiteLLM-based provider implementation with instructor support"""
+    """Manages LLM interactions with structured output support"""
     
     def __init__(self, model: str, max_tokens: Optional[int] = None):
+        """
+        Initialize provider with model settings
+        
+        Args:
+            model: Model identifier
+            max_tokens: Maximum response tokens
+        """
         self.model = model
         self.max_tokens = max_tokens
         self.instructor = InstructorHandler(model)
@@ -19,13 +26,20 @@ class LLMProvider:
         prompt_system: str,
         prompt_user: str,
         response_format: Optional[Type[BaseModel]] = None
-    ) -> Union[str, dict, BaseModel]:
+    ) -> Union[str, dict[str, Any], BaseModel]:
         """
-        Generate completion using LiteLLM with instructor support
+        Generate completion with optional structure
         
+        Args:
+            prompt_system: System context
+            prompt_user: User input
+            response_format: Optional Pydantic model
+            
         Returns:
-            Union[str, dict, BaseModel]: String for unstructured responses,
-            dict/Pydantic model for structured responses
+            Structured or unstructured response
+            
+        Raises:
+            RuntimeError: Completion failed
         """
         messages = [
             {"role": "system", "content": prompt_system},
@@ -33,12 +47,12 @@ class LLMProvider:
         ]
         
         try:
-            # Trim messages based on whether max_tokens is specified
-            if self.max_tokens is not None:
-                messages = trim_messages(messages, max_tokens=self.max_tokens)
-            else:
-                messages = trim_messages(messages, model=self.model)
+            messages = trim_messages(
+                messages,
+                max_tokens=self.max_tokens if self.max_tokens else None,
+                model=self.model
+            )
         except Exception as e:
-            logger.warning("Message trimming failed, using original messages.")
+            logger.warning(f"Message trimming failed: {e}")
         
         return await self.instructor.complete_structured(messages, response_format)

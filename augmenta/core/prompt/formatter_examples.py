@@ -1,43 +1,48 @@
+"""Example formatting utilities for prompt creation."""
+
+from typing import Dict, Any
 import yaml
 import json
 from xml.sax.saxutils import escape
 
 class ExampleFormatter:
-    """Formats examples for prompt creation"""
+    """Formats examples for prompt creation using XML structure."""
     
     @staticmethod
     def format_examples(examples_yaml: str) -> str:
-        """Format YAML examples into XML structure"""
+        """
+        Format YAML examples into XML structure.
+        
+        Args:
+            examples_yaml: YAML string containing example data
+            
+        Returns:
+            str: Formatted XML string containing examples
+            
+        Raises:
+            ValueError: If YAML is invalid or missing required fields
+        """
         try:
-            # Parse YAML
-            data = yaml.safe_load(examples_yaml)
+            data: Dict[str, Any] = yaml.safe_load(examples_yaml)
             
             if not data or 'examples' not in data:
                 return ""
             
-            # Process each example
-            formatted_examples = []
+            examples = []
             for example in data['examples']:
-                input_text = example['input']
-                output_dict = example['output']
+                if not isinstance(example, dict) or 'input' not in example or 'output' not in example:
+                    raise ValueError("Each example must contain 'input' and 'output' fields")
                 
-                # Convert output to JSON string, ensuring proper escaping
-                output_json = json.dumps(output_dict, ensure_ascii=False)
-                
-                # Create XML structure for this example
+                output_json = json.dumps(example['output'], ensure_ascii=False)
                 example_xml = (
-                    f'<example>\n'
-                    f'<input>{escape(input_text)}</input>\n'
-                    f'<ideal_output>{escape(output_json)}</ideal_output>\n'
+                    f'<example>'
+                    f'<input>{escape(str(example["input"]))}</input>'
+                    f'<ideal_output>{escape(output_json)}</ideal_output>'
                     f'</example>'
                 )
-                formatted_examples.append(example_xml)
+                examples.append(example_xml)
             
-            # Combine all examples
-            examples_xml = '\n'.join(formatted_examples)
-            return f"## Examples\n<examples>\n{examples_xml}\n</examples>"
+            return f"## Examples\n<examples>\n{''.join(examples)}\n</examples>"
             
         except yaml.YAMLError as e:
             raise ValueError(f"Invalid YAML format: {e}")
-        except KeyError as e:
-            raise ValueError(f"Missing required field in examples: {e}")

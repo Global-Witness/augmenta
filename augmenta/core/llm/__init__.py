@@ -1,11 +1,10 @@
-from typing import Optional, Type, Union
+from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
 from .provider import LLMProvider
 from .instructor_handler import InstructorHandler
 from ..utils import RateLimiter
 
-# Create a single global rate limiter instance
-_rate_limiter = None
+_rate_limiter: Optional[RateLimiter] = None
 
 async def make_request_llm(
     prompt_system: str,
@@ -13,26 +12,37 @@ async def make_request_llm(
     model: str,
     response_format: Optional[Type[BaseModel]] = None,
     rate_limit: Optional[float] = None,
-    max_tokens: Optional[int] = None  # Add max_tokens parameter
-) -> Union[str, dict, BaseModel]:
+    max_tokens: Optional[int] = None
+) -> Union[str, dict[str, Any], BaseModel]:
     """
-    Make a request to an LLM with optional rate limiting
+    Make a rate-limited request to an LLM with structured output support.
     
     Args:
-        prompt_system: System prompt
-        prompt_user: User prompt
-        model: Model identifier
-        response_format: Optional Pydantic model for response structure
-        rate_limit: Time between requests in seconds, or None for no rate limiting
-        max_tokens: Maximum number of tokens for the response
+        prompt_system: System context for the LLM
+        prompt_user: User input/query
+        model: LLM model identifier
+        response_format: Optional Pydantic model for structured output
+        rate_limit: Seconds between requests (None for no limit)
+        max_tokens: Maximum tokens in response
+        
+    Returns:
+        String for unstructured responses, dict/BaseModel for structured
+        
+    Raises:
+        ValueError: Invalid prompt or model
+        RuntimeError: LLM request failed
     """
+    if not prompt_system or not prompt_user:
+        raise ValueError("Both system and user prompts are required")
+        
     global _rate_limiter
-    if _rate_limiter is None:
+    if rate_limit and not _rate_limiter:
         _rate_limiter = RateLimiter(rate_limit)
         
-    provider = LLMProvider(model, max_tokens=max_tokens)
-    await _rate_limiter.acquire()
+    if _rate_limiter:
+        await _rate_limiter.acquire()
+        
+    provider = LLMProvider(model, max_tokens)
     return await provider.complete(prompt_system, prompt_user, response_format)
 
-# Export the necessary components
 __all__ = ['make_request_llm', 'InstructorHandler', 'LLMProvider']
