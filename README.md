@@ -58,14 +58,13 @@ python -m pytest
 - [ ] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
   - [x] Remove output from the prompt
-  - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
   - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
-- [ ] Add LLM token limits, triming function, rate limiting
+- [x] Add LLM token limits, triming function, rate limiting
 - [ ] Scrape via proxy (oxylabs)
+- [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Tests
   - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
   - [ ] Test support for various models (Claude, Deepseek, etc) 
-- [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Check for proper package structure stuff
 
 ### Nice to have

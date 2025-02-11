@@ -12,7 +12,8 @@ async def make_request_llm(
     prompt_user: str,
     model: str,
     response_format: Optional[Type[BaseModel]] = None,
-    rate_limit: Optional[float] = None
+    rate_limit: Optional[float] = None,
+    max_tokens: Optional[int] = None  # Add max_tokens parameter
 ) -> Union[str, dict, BaseModel]:
     """
     Make a request to an LLM with optional rate limiting
@@ -23,12 +24,13 @@ async def make_request_llm(
         model: Model identifier
         response_format: Optional Pydantic model for response structure
         rate_limit: Time between requests in seconds, or None for no rate limiting
+        max_tokens: Maximum number of tokens for the response
     """
     global _rate_limiter
     if _rate_limiter is None:
         _rate_limiter = RateLimiter(rate_limit)
         
-    provider = LLMProvider(model)
+    provider = LLMProvider(model, max_tokens=max_tokens)
     await _rate_limiter.acquire()
     return await provider.complete(prompt_system, prompt_user, response_format)
 

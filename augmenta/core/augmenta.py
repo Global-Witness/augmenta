@@ -85,14 +85,14 @@ async def process_row(
             if placeholder in prompt_user:
                 prompt_user = prompt_user.replace(placeholder, str(row[column]))
         
-        prompt_user = f'{urls_docs}\n\n{prompt_user}'
-        
-        # # Add structure format to prompt if structure is defined
-        # if "structure" in config:
-        #     prompt_user = append_structure(prompt_user, config["structure"])
+        # Put prompt first, then documents
+        prompt_user = f'{prompt_user}\n\n## Here are the documents to analyze:\n\n{urls_docs}'
         
         # Create structure class using InstructorHandler
         Structure = InstructorHandler.create_structure_class(config["config_path"])
+        
+        # Get max_tokens from config if it exists
+        max_tokens = config.get("model", {}).get("max_tokens")
         
         # Get LLM response
         response = await make_request_llm(
@@ -100,7 +100,8 @@ async def process_row(
             prompt_user=prompt_user,
             model=config["model"]["name"],
             response_format=Structure,
-            rate_limit=config["model"].get("rate_limit")
+            rate_limit=config["model"].get("rate_limit"),
+            max_tokens=max_tokens
         )
         
         # Response is already a dict, no need to parse JSON
