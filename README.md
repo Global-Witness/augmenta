@@ -55,15 +55,16 @@ python -m pytest
   - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
 - [x] Progress bar for the CLI
-- [x] Test support for various models (Claude, Deepseek, etc)
 - [ ] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
-  - [ ] Remove output from the prompt
+  - [x] Remove output from the prompt
   - [ ] If using Instructor, [extract directly to pandas](https://python.useinstructor.com/examples/pandas_df/)?
-  - [ ] Declare possible outputs in the YAML
+  - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
 - [ ] Add LLM token limits, triming function, rate limiting
 - [ ] Scrape via proxy (oxylabs)
-- [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
+- [ ] Tests
+  - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
+  - [ ] Test support for various models (Claude, Deepseek, etc) 
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Check for proper package structure stuff
 
@@ -75,3 +76,4 @@ python -m pytest
 - [ ] Allow the LLM to set/refine their own search queries
 - [x] Make it so that you can refer to other columns in the prompt
 - [ ] Make the search optional, some prompts may only need data that is already available
+- [ ] Cost (and [energy](https://huggingface.co/blog/sasha/announcing-ai-energy-score)?) tracker

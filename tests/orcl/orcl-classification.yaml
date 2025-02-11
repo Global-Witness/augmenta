@@ -2,12 +2,12 @@ input_csv: tests/orcl/orcl-standardised.csv
 output_csv: tests/orcl/orcl-output.csv
 model:
   name: anthropic/claude-3-5-haiku-latest
-  rate_limit: 10
+  rate_limit: 1
 # token_limit: 20000
 query_col: org
 search:
   engine: brave
-  results: 5
+  results: 1
   rate_limit: 2
 prompt:
   system: You are an expert researcher whose job is to classify companies based on their industry affiliation. You will be provided a collection of documents collected from Google search results for a company. You will determine what industry that company or trade group belongs to.
@@ -17,15 +17,22 @@ prompt:
 
     Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{org}}.
 structure:
-  think:
-    type: str
-    description: A space for you to think before making a decision. What are the organisation's primary activities? Whose interests does it represent? This will be removed from the final output.
   org_type:
     type: str
-    description: One of "for-profit company", "NGO or trade group" or "other"?
+    description: What kind of organisation is it?
+    options:
+      - for-profit company
+      - NGO or trade group
+      - other
   industry:
     type: str
-    description: One of "fossil fuel organisation", "conservation or environmental group", "government department", "educational instutution", "other" if none of the previous categories fit.
+    description: What industry does the organisation belong to?
+    options:
+      - fossil fuel organisation
+      - conservation or environmental group
+      - government department
+      - educational institution
+      - other
   explanation:
     type: str
     description: A brief explanation of your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one URL.

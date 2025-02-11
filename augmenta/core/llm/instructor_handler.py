@@ -1,4 +1,4 @@
-from typing import Type, Optional, Union
+from typing import Type, Optional, Union, Literal, get_args
 from pathlib import Path
 from pydantic import BaseModel, create_model, Field
 import yaml
@@ -44,16 +44,33 @@ class InstructorHandler:
             for field_name, field_info in yaml_content['structure'].items():
                 field_type = TYPE_MAPPING.get(field_info['type'], str)
                 description = field_info.get('description', '')
+                
+                # Handle options field by creating a Literal type
+                if 'options' in field_info:
+                    options = tuple(field_info['options'])
+                    field_type = Literal[options]  # type: ignore
+                
                 fields[field_name] = (
                     field_type, 
-                    Field(default=None, description=description)
+                    Field(
+                        default=None, 
+                        description=description,
+                        # Include options in field metadata if present
+                        json_schema_extra={
+                            'options': field_info['options']
+                        } if 'options' in field_info else None
+                    )
                 )
             
             StructureClass = create_model('Structure', **fields, __base__=BaseModel)
             
-            # # Print the schema
-            # print("\nGenerated Pydantic Model Schema:")
-            # print(StructureClass.model_json_schema())
+            # Add validation to ensure values match options
+            for field_name, field_info in yaml_content['structure'].items():
+                if 'options' in field_info:
+                    field = StructureClass.model_fields[field_name]
+                    field.json_schema_extra = {
+                        'options': field_info['options']
+                    }
             
             return StructureClass
             
