@@ -1,4 +1,7 @@
-import sqlite3
+"""
+Thread-safe singleton manager for caching process results.
+"""
+
 import json
 import threading
 import uuid
@@ -6,16 +9,17 @@ import logging
 import atexit
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, Generator, Tuple, List
+from typing import Optional, Dict, Any, List, Tuple
 from queue import Queue, Empty
-from contextlib import contextmanager
-from .models import ProcessStatus, DatabaseError
+
+from .models import ProcessStatus, ValidationError
+from .database import DatabaseConnection
 
 logger = logging.getLogger(__name__)
 
 class CacheManager:
     """
-    Thread-safe singleton manager for caching process results in SQLite.
+    Thread-safe singleton manager for caching process results.
     
     Implements a write-ahead logging pattern with a background writer thread
     to improve performance and prevent blocking operations.
@@ -50,85 +54,14 @@ class CacheManager:
             self.cache_dir = cache_dir or Path.home() / '.augmenta' / 'cache'
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = self.cache_dir / 'cache.db'
+            
             self.write_queue: Queue = Queue()
             self.is_running = True
             
-            self._init_db()
+            self.db = DatabaseConnection(self.db_path)
             self._start_writer_thread()
             atexit.register(self.cleanup)
             self.initialized = True
-    
-    def _init_db(self) -> None:
-        """
-        Initialize the database schema with proper indexes and constraints.
-        Creates tables if they don't exist.
-        """
-        with self._get_connection() as conn:
-            conn.executescript('''
-                PRAGMA foreign_keys = ON;
-                PRAGMA journal_mode = WAL;
-                
-                CREATE TABLE IF NOT EXISTS processes (
-                    process_id TEXT PRIMARY KEY,
-                    config_hash TEXT NOT NULL,
-                    start_time TIMESTAMP NOT NULL,
-                    last_updated TIMESTAMP NOT NULL,
-                    status TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed')),
-                    total_rows INTEGER NOT NULL CHECK(total_rows >= 0),
-                    processed_rows INTEGER NOT NULL DEFAULT 0 CHECK(processed_rows >= 0)
-                );
-                
-                CREATE TABLE IF NOT EXISTS results_cache (
-                    process_id TEXT NOT NULL,
-                    row_index INTEGER NOT NULL CHECK(row_index >= 0),
-                    query TEXT NOT NULL,
-                    result TEXT NOT NULL,
-                    created_at TIMESTAMP NOT NULL,
-                    PRIMARY KEY (process_id, row_index),
-                    FOREIGN KEY (process_id) REFERENCES processes(process_id)
-                        ON DELETE CASCADE
-                );
-                
-                CREATE INDEX IF NOT EXISTS idx_process_status 
-                ON processes(status, last_updated);
-                
-                CREATE INDEX IF NOT EXISTS idx_config_hash
-                ON processes(config_hash, last_updated);
-            ''')
-    
-    @contextmanager
-    def _get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """
-        Get a database connection with retry logic and proper error handling.
-        
-        Yields:
-            sqlite3.Connection: Database connection with row factory enabled
-            
-        Raises:
-            DatabaseError: If connection fails after max retries
-        """
-        MAX_RETRIES = 3
-        DB_TIMEOUT = 30.0
-        
-        for attempt in range(MAX_RETRIES):
-            conn = None
-            try:
-                conn = sqlite3.connect(
-                    self.db_path,
-                    timeout=DB_TIMEOUT,
-                    isolation_level='IMMEDIATE'
-                )
-                conn.row_factory = sqlite3.Row
-                yield conn
-                conn.commit()
-                return
-            except sqlite3.OperationalError as e:
-                if attempt == MAX_RETRIES - 1:
-                    raise DatabaseError(f"Database connection failed: {e}")
-                logger.warning(f"Database connection attempt {attempt + 1} failed, retrying...")
-            finally:
-                if conn:
-                    conn.close()
     
     def _start_writer_thread(self) -> None:
         """Start the background writer thread for async database operations."""
@@ -160,7 +93,7 @@ class CacheManager:
                 
                 # Process batch if not empty
                 if batch:
-                    with self._get_connection() as conn:
+                    with self.db.get_connection() as conn:
                         for query, params in batch:
                             conn.execute(query, params)
                     batch.clear()
@@ -183,10 +116,12 @@ class CacheManager:
             str: Unique process ID
             
         Raises:
-            ValueError: If total_rows is negative
+            ValidationError: If parameters are invalid
         """
-        if total_rows < 0:
-            raise ValueError("total_rows must be non-negative")
+        if not isinstance(config_hash, str) or not config_hash.strip():
+            raise ValidationError("Config hash must be a non-empty string")
+        if not isinstance(total_rows, int) or total_rows < 0:
+            raise ValidationError("Total rows must be a non-negative integer")
             
         process_id = str(uuid.uuid4())
         current_time = datetime.now()
@@ -214,7 +149,19 @@ class CacheManager:
             row_index: Index of the processed row
             query: Query that generated the result
             result: JSON-serializable result data
+            
+        Raises:
+            ValidationError: If parameters are invalid
         """
+        if not isinstance(process_id, str) or not process_id.strip():
+            raise ValidationError("Process ID must be a non-empty string")
+        if not isinstance(row_index, int) or row_index < 0:
+            raise ValidationError("Row index must be a non-negative integer")
+        if not isinstance(query, str):
+            raise ValidationError("Query must be a string")
+        if not isinstance(result, str):
+            raise ValidationError("Result must be a string")
+            
         current_time = datetime.now()
         
         self.write_queue.put((
@@ -241,8 +188,14 @@ class CacheManager:
             
         Returns:
             Dict[int, Any]: Dictionary mapping row indices to their results
+            
+        Raises:
+            ValidationError: If process_id is invalid
         """
-        with self._get_connection() as conn:
+        if not isinstance(process_id, str) or not process_id.strip():
+            raise ValidationError("Process ID must be a non-empty string")
+            
+        with self.db.get_connection() as conn:
             rows = conn.execute(
                 "SELECT row_index, result FROM results_cache WHERE process_id = ?",
                 (process_id,)
@@ -258,8 +211,14 @@ class CacheManager:
             
         Returns:
             Optional[ProcessStatus]: Process status if found, None otherwise
+            
+        Raises:
+            ValidationError: If process_id is invalid
         """
-        with self._get_connection() as conn:
+        if not isinstance(process_id, str) or not process_id.strip():
+            raise ValidationError("Process ID must be a non-empty string")
+            
+        with self.db.get_connection() as conn:
             row = conn.execute(
                 "SELECT * FROM processes WHERE process_id = ?",
                 (process_id,)
@@ -278,8 +237,14 @@ class CacheManager:
             
         Returns:
             Optional[ProcessStatus]: Most recent unfinished process if found
+            
+        Raises:
+            ValidationError: If config_hash is invalid
         """
-        with self._get_connection() as conn:
+        if not isinstance(config_hash, str) or not config_hash.strip():
+            raise ValidationError("Config hash must be a non-empty string")
+            
+        with self.db.get_connection() as conn:
             row = conn.execute("""
                 SELECT * FROM processes 
                 WHERE config_hash = ? 
@@ -301,7 +266,13 @@ class CacheManager:
             
         Returns:
             str: Formatted summary string
+            
+        Raises:
+            ValidationError: If process is invalid
         """
+        if not isinstance(process, ProcessStatus):
+            raise ValidationError("Process must be a ProcessStatus instance")
+            
         time_diff = datetime.now() - process.last_updated
         if time_diff.days > 0:
             time_ago = f"{time_diff.days} days ago"
@@ -324,13 +295,13 @@ class CacheManager:
             days: Number of days to keep, defaults to 30
             
         Raises:
-            ValueError: If days is negative
+            ValidationError: If days is invalid
         """
-        if days < 0:
-            raise ValueError("days must be non-negative")
+        if not isinstance(days, int) or days < 0:
+            raise ValidationError("Days must be a non-negative integer")
             
         cutoff = datetime.now() - timedelta(days=days)
-        with self._get_connection() as conn:
+        with self.db.get_connection() as conn:
             conn.execute(
                 "DELETE FROM processes WHERE last_updated < ?",
                 (cutoff,)

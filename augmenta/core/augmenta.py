@@ -16,8 +16,8 @@ from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import format_docs, format_examples
 from augmenta.core.llm import make_request_llm, InstructorHandler
 from augmenta.core.cache import CacheManager
+from augmenta.core.cache.process import setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
-from augmenta.core.utils import get_config_hash
 
 # Configure module logger
 logger = logging.getLogger(__name__)
@@ -203,27 +203,16 @@ async def process_augmenta(
     except Exception as e:
         raise ConfigurationError(f"Error loading input CSV: {e}")
 
-    # Handle caching
-    cache_manager = None
-    cached_results = {}
+    # Handle caching setup
+    cache_manager, process_id, cached_results = setup_caching(
+        config_data,
+        cache_enabled,
+        len(df),
+        process_id
+    )
     
     if cache_enabled:
-        cache_manager = CacheManager()
-        config_hash = get_config_hash(config_data)
-        
-        if not process_id and auto_resume:
-            if unfinished_process := cache_manager.find_unfinished_process(config_hash):
-                process_id = unfinished_process.process_id
-                
-        if not process_id:
-            process_id = cache_manager.start_process(config_hash, len(df))
-        
-        cached_results = cache_manager.get_cached_results(process_id)
-        
-        # Apply cached results
-        for row_index, result in cached_results.items():
-            for key, value in result.items():
-                df.at[row_index, key] = value
+        df = apply_cached_results(df, process_id, cache_manager)
 
     # Process remaining rows
     rows_to_process = [
@@ -231,6 +220,7 @@ async def process_augmenta(
         for index, row in df.iterrows()
         if not cache_enabled or index not in cached_results
     ]
+
 
     processed = 0
     def update_progress(query: str) -> None:

@@ -11,8 +11,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 
 from augmenta.core.augmenta import process_augmenta
-from augmenta.core.cache import CacheManager
-from augmenta.core.utils import get_config_hash
+from augmenta.core.cache.process import handle_process_resumption, handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
 
 # Configure logging
@@ -95,8 +94,7 @@ def main(
     """
     try:
         if clean_cache:
-            CacheManager().cleanup_old_processes()
-            click.echo("Cache cleaned successfully!")
+            handle_cache_cleanup()
             return
 
         if not config_path:
@@ -113,15 +111,12 @@ def main(
             click.echo(f"Processing config file: {config_path}")
 
         # Handle process resumption
-        process_id = resume
-        if not resume and not no_cache and not no_auto_resume:
-            cache_manager = CacheManager()
-            config_hash = get_config_hash(config_data)
-            if unfinished_process := cache_manager.find_unfinished_process(config_hash):
-                summary = cache_manager.get_process_summary(unfinished_process)
-                click.echo(summary)
-                if click.confirm("Would you like to resume this process?"):
-                    process_id = unfinished_process.process_id
+        process_id = handle_process_resumption(
+            config_data,
+            no_cache=no_cache,
+            resume=resume,
+            no_auto_resume=no_auto_resume
+        )
 
         # Process with progress tracking
         with ProcessContext() as ctx:
@@ -141,6 +136,3 @@ def main(
     except Exception as e:
         click.echo(f"Error: {str(e)}", err=True)
         raise click.Abort()
-
-if __name__ == '__main__':
-    main()
