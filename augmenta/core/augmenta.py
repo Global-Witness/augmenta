@@ -16,7 +16,7 @@ from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import format_docs, format_examples
 from augmenta.core.llm import make_request_llm, InstructorHandler
 from augmenta.core.cache import CacheManager
-from augmenta.core.cache.process import setup_caching, apply_cached_results
+from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
 
 # Configure module logger
@@ -162,19 +162,6 @@ async def process_augmenta(
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """
     Process data using the Augmenta pipeline.
-    
-    Args:
-        config_path: Path to configuration file
-        cache_enabled: Whether to enable caching
-        process_id: Optional process ID for resuming
-        progress_callback: Optional callback for progress updates
-        auto_resume: Whether to automatically resume unfinished processes
-        
-    Returns:
-        Tuple of processed DataFrame and process ID (if caching enabled)
-        
-    Raises:
-        ConfigurationError: If configuration is invalid
     """
     config_path = Path(config_path)
     if not config_path.exists():
@@ -203,12 +190,23 @@ async def process_augmenta(
     except Exception as e:
         raise ConfigurationError(f"Error loading input CSV: {e}")
 
+    # Handle process resumption with both config and CSV hashes
+    process_id = handle_process_resumption(
+        config_data=config_data,
+        config_path=config_path,
+        csv_path=config_data["input_csv"],
+        no_cache=not cache_enabled,
+        resume=process_id,
+        no_auto_resume=not auto_resume
+    )
+
     # Handle caching setup
     cache_manager, process_id, cached_results = setup_caching(
-        config_data,
-        cache_enabled,
-        len(df),
-        process_id
+        config_data=config_data,
+        csv_path=config_data["input_csv"],
+        cache_enabled=cache_enabled,
+        df_length=len(df),
+        process_id=process_id
     )
     
     if cache_enabled:

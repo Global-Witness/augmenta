@@ -5,12 +5,15 @@ Process-specific caching operations and utilities.
 import click
 import pandas as pd
 from typing import Optional, Dict, Any, Tuple
+from pathlib import Path
 
 from .manager import CacheManager
-from augmenta.core.utils import get_config_hash
+from augmenta.core.utils import get_hash
 
 def handle_process_resumption(
     config_data: Dict[str, Any],
+    config_path: Path,
+    csv_path: Path,
     no_cache: bool = False,
     resume: Optional[str] = None,
     no_auto_resume: bool = False
@@ -20,6 +23,8 @@ def handle_process_resumption(
     
     Args:
         config_data: Configuration dictionary
+        config_path: Path to config file
+        csv_path: Path to input CSV file
         no_cache: Whether caching is disabled
         resume: Optional process ID to resume
         no_auto_resume: Whether to disable automatic resumption
@@ -30,8 +35,12 @@ def handle_process_resumption(
     process_id = resume
     if not resume and not no_cache and not no_auto_resume:
         cache_manager = CacheManager()
-        config_hash = get_config_hash(config_data)
-        if unfinished_process := cache_manager.find_unfinished_process(config_hash):
+        # Generate combined hash of both config and CSV
+        config_hash = get_hash(config_data)
+        csv_hash = get_hash(csv_path)
+        combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
+        
+        if unfinished_process := cache_manager.find_unfinished_process(combined_hash):
             summary = cache_manager.get_process_summary(unfinished_process)
             click.echo(summary)
             if click.confirm("Would you like to resume this process?"):
@@ -71,6 +80,7 @@ def apply_cached_results(
 
 def setup_caching(
     config_data: Dict[str, Any],
+    csv_path: Path,
     cache_enabled: bool,
     df_length: int,
     process_id: Optional[str] = None
@@ -80,6 +90,7 @@ def setup_caching(
     
     Args:
         config_data: Configuration dictionary
+        csv_path: Path to input CSV file
         cache_enabled: Whether caching is enabled
         df_length: Length of the DataFrame
         process_id: Optional process ID to use
@@ -95,10 +106,12 @@ def setup_caching(
     
     if cache_enabled:
         cache_manager = CacheManager()
-        config_hash = get_config_hash(config_data)
+        config_hash = get_hash(config_data)
+        csv_hash = get_hash(csv_path)
+        combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
         
         if not process_id:
-            process_id = cache_manager.start_process(config_hash, df_length)
+            process_id = cache_manager.start_process(combined_hash, df_length)
             
         cached_results = cache_manager.get_cached_results(process_id)
     

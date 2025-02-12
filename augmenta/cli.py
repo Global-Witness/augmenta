@@ -110,20 +110,12 @@ def main(
         if verbose:
             click.echo(f"Processing config file: {config_path}")
 
-        # Handle process resumption
-        process_id = handle_process_resumption(
-            config_data,
-            no_cache=no_cache,
-            resume=resume,
-            no_auto_resume=no_auto_resume
-        )
-
         # Process with progress tracking
         with ProcessContext() as ctx:
             _, final_process_id = asyncio.run(process_augmenta(
                 config_path,
                 cache_enabled=not no_cache,
-                process_id=process_id,
+                process_id=resume,
                 progress_callback=ctx.update_progress,
                 auto_resume=not no_auto_resume
             ))

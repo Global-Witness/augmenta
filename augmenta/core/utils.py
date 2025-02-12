@@ -6,25 +6,43 @@ import json
 import hashlib
 import asyncio
 import time
-from typing import Dict, Optional, ClassVar
+from pathlib import Path
+from typing import Dict, Optional, ClassVar, Union
 from dataclasses import dataclass
 
-def get_config_hash(config: dict) -> str:
+def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
     """
-    Generate a deterministic hash of configuration data.
+    Generate a deterministic hash of data or file contents.
     
     Args:
-        config: Configuration dictionary to hash
+        data: Data to hash - can be a dictionary, Path object, or string filepath
+        chunk_size: Size of chunks to read when processing files (bytes)
         
     Returns:
-        str: SHA-256 hash of the sorted JSON representation
-    """
-    if not isinstance(config, dict):
-        raise TypeError("Config must be a dictionary")
+        str: SHA-256 hash of the data
         
-    return hashlib.sha256(
-        json.dumps(config, sort_keys=True).encode('utf-8')
-    ).hexdigest()
+    Raises:
+        TypeError: If data is not a dictionary, Path, or string
+        FileNotFoundError: If file path does not exist
+    """
+    hasher = hashlib.sha256()
+    
+    if isinstance(data, dict):
+        # For dictionaries, hash the sorted JSON representation
+        hasher.update(json.dumps(data, sort_keys=True).encode('utf-8'))
+    elif isinstance(data, (str, Path)):
+        # For files, hash the contents in chunks
+        filepath = Path(data)
+        if not filepath.exists():
+            raise FileNotFoundError(f"File not found: {filepath}")
+            
+        with open(filepath, 'rb') as f:
+            while chunk := f.read(chunk_size):
+                hasher.update(chunk)
+    else:
+        raise TypeError("Data must be a dictionary, Path, or string filepath")
+        
+    return hasher.hexdigest()
 
 @dataclass
 class RateLimiter:
