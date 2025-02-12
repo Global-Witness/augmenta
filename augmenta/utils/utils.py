@@ -1,6 +1,4 @@
-"""
-Utility functions and classes for the Augmenta package.
-"""
+"""Utility functions and classes for the Augmenta package."""
 
 import json
 import hashlib
@@ -11,27 +9,12 @@ from typing import Dict, Optional, ClassVar, Union
 from dataclasses import dataclass
 
 def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
-    """
-    Generate a deterministic hash of data or file contents.
-    
-    Args:
-        data: Data to hash - can be a dictionary, Path object, or string filepath
-        chunk_size: Size of chunks to read when processing files (bytes)
-        
-    Returns:
-        str: SHA-256 hash of the data
-        
-    Raises:
-        TypeError: If data is not a dictionary, Path, or string
-        FileNotFoundError: If file path does not exist
-    """
+    """Generate a deterministic hash of data or file contents."""
     hasher = hashlib.sha256()
     
     if isinstance(data, dict):
-        # For dictionaries, hash the sorted JSON representation
         hasher.update(json.dumps(data, sort_keys=True).encode('utf-8'))
     elif isinstance(data, (str, Path)):
-        # For files, hash the contents in chunks
         filepath = Path(data)
         if not filepath.exists():
             raise FileNotFoundError(f"File not found: {filepath}")
@@ -46,15 +29,8 @@ def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
 
 @dataclass
 class RateLimiter:
-    """
-    Rate limiter for API requests using singleton pattern.
-    
-    Args:
-        rate_limit: Minimum time (seconds) between requests. None for no limit.
-    """
+    """Rate limiter for API requests using singleton pattern."""
     rate_limit: Optional[float]
-    
-    # Class variables
     _instances: ClassVar[Dict[Optional[float], 'RateLimiter']] = {}
     _lock: ClassVar[asyncio.Lock] = asyncio.Lock()
     _last_request_time: float = 0.0
@@ -68,14 +44,27 @@ class RateLimiter:
         
     async def acquire(self) -> None:
         """Wait for rate limit if needed."""
-        if self.rate_limit is None:
+        if not self.rate_limit:
             return
             
         async with self._lock:
-            current_time = time.time()
-            time_since_last = current_time - self._last_request_time
-            
+            time_since_last = time.time() - self._last_request_time
             if time_since_last < self.rate_limit:
                 await asyncio.sleep(self.rate_limit - time_since_last)
-                
             self._last_request_time = time.time()
+
+class ProgressTracker:
+    """Handles progress tracking and display."""
+    def __init__(self, total: int, label: str = 'Processing'):
+        self.total = total
+        self.label = label
+        self.current = 0
+        self.current_item = ""
+        
+    def update(self, item: str = "") -> None:
+        self.current += 1
+        self.current_item = item
+        
+    @property
+    def progress(self) -> float:
+        return (self.current / self.total) * 100

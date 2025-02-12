@@ -13,26 +13,12 @@ async def extract_urls(
     extractor: Optional[TextExtractor] = None,
     timeout: int = 30
 ) -> List[Tuple[str, Optional[str]]]:
-    """
-    Extract text from multiple URLs using parallel processing.
-    
-    Args:
-        urls: Sequence of URLs to process
-        max_workers: Maximum number of concurrent workers
-        extractor: Custom extractor instance (defaults to TrafilaturaExtractor)
-        timeout: Timeout in seconds for each extraction
-        
-    Returns:
-        List of tuples containing (url, extracted_text)
-        
-    Raises:
-        ExtractionError: If there's a critical error during extraction
-    """
+    """Extract text from multiple URLs using parallel processing."""
     if not urls:
         return []
     
     extractor = extractor or TrafilaturaExtractor()
-    max_workers = min(max_workers or 10, len(urls))  # Optimize worker count
+    max_workers = min(max_workers or 10, len(urls))
     
     async def extract_with_timeout(url: str) -> Tuple[str, Optional[str]]:
         try:
@@ -41,11 +27,8 @@ async def extract_urls(
                 timeout=timeout
             )
             return url, text
-        except asyncio.TimeoutError:
-            logger.warning(f"Timeout while processing {url}")
-            return url, None
-        except Exception as e:
-            logger.error(f"Error processing {url}: {str(e)}")
+        except (asyncio.TimeoutError, Exception) as e:
+            logger.warning(f"Error processing {url}: {str(e)}")
             return url, None
     
     try:

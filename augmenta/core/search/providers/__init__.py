@@ -1,5 +1,3 @@
-"""Search provider implementations for different search engines."""
-
 from .base import SearchProvider
 from .brave import BraveSearchProvider
 from .oxylabs import OxylabsSearchProvider

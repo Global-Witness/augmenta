@@ -5,6 +5,7 @@ import aiohttp
 from aiohttp import ClientTimeout, ClientError
 from trafilatura import extract
 from trafilatura.settings import use_config
+from augmenta.utils.validators import is_valid_url
 from .base import TextExtractor, ExtractionError
 
 logger = logging.getLogger(__name__)
@@ -17,27 +18,12 @@ class TrafilaturaExtractor(TextExtractor):
     RETRY_DELAY: Final[float] = 1.0
     
     def __init__(self) -> None:
-        super().__init__()
-        # Configure trafilatura for better extraction
         self.config = use_config()
         self.config.set("DEFAULT", "MIN_EXTRACTED_SIZE", "50")
         self.config.set("DEFAULT", "MIN_OUTPUT_SIZE", "50")
     
     async def extract(self, url: str, timeout: int = 30) -> Optional[str]:
-        """
-        Extract text content from URL using Trafilatura.
-        
-        Args:
-            url: URL to extract content from
-            timeout: Timeout in seconds
-            
-        Returns:
-            Optional[str]: Extracted text or None if extraction failed
-            
-        Raises:
-            ExtractionError: If there's an error during extraction
-        """
-        if not self.validate_url(url):
+        if not is_valid_url(url):
             logger.warning(f"Invalid URL format: {url}")
             return None
         
@@ -50,22 +36,13 @@ class TrafilaturaExtractor(TextExtractor):
         for attempt in range(self.MAX_RETRIES):
             try:
                 async with aiohttp.ClientSession(timeout=timeout_settings) as session:
-                    async with session.get(
-                        url,
-                        allow_redirects=True,
-                        ssl=True
-                    ) as response:
+                    async with session.get(url, allow_redirects=True, ssl=True) as response:
                         if response.status != 200:
-                            logger.warning(
-                                f"HTTP {response.status} for {url}"
-                            )
+                            logger.warning(f"HTTP {response.status} for {url}")
                             return None
                         
-                        content_type = response.headers.get('content-type', '')
-                        if not content_type.startswith('text/'):
-                            logger.warning(
-                                f"Unsupported content type {content_type} for {url}"
-                            )
+                        if not response.headers.get('content-type', '').startswith('text/'):
+                            logger.warning(f"Unsupported content type for {url}")
                             return None
                         
                         content = await response.text()

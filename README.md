@@ -57,6 +57,7 @@ python -m pytest
   - [x] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
   - [x] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
   - [ ] DB doesn't update when a process is done running
+  - [ ] Simplify to just `running` and `completed`
 - [x] Progress bar for the CLI
 - [x] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
@@ -70,6 +71,7 @@ python -m pytest
   - [ ] Test support for various models (Claude, Deepseek, etc) 
 - [ ] Check for proper package structure stuff
 - [ ] Documentation, examples, etc
+- [ ] Remove credentials validation?
 
 ### Nice to have
 - [ ] Add support for PDFs and other file types?

@@ -5,23 +5,20 @@ from pydantic import BaseModel, Field, create_model
 import yaml
 import instructor
 from litellm import Router
+from litellm.utils import trim_messages
+import logging
 
-class InstructorHandler:
-    """Handles structured output processing using instructor"""
+logger = logging.getLogger(__name__)
+
+class LLMClient:
+    """Handles LLM interactions with structured output support"""
     
-    # Type mapping for YAML to Python types
     TYPE_MAPPING: ClassVar[Dict[str, type]] = {
         'str': str, 'bool': bool, 'int': int,
         'float': float, 'dict': dict, 'list': list
     }
     
-    def __init__(self, model: str):
-        """
-        Initialize with model configuration
-        
-        Args:
-            model: Model identifier
-        """
+    def __init__(self, model: str, max_tokens: Optional[int] = None):
         router = Router(
             model_list=[{
                 "model_name": model,
@@ -31,22 +28,12 @@ class InstructorHandler:
         )
         self.client = instructor.patch(router)
         self.model = model
+        self.max_tokens = max_tokens
 
     @staticmethod
     @lru_cache(maxsize=32)
     def create_structure_class(yaml_file_path: Union[str, Path]) -> Type[BaseModel]:
-        """
-        Creates a cached Pydantic model from YAML structure
-        
-        Args:
-            yaml_file_path: Path to YAML structure definition
-            
-        Returns:
-            Pydantic model class
-            
-        Raises:
-            ValueError: Invalid YAML or structure
-        """
+        """Creates a Pydantic model from YAML structure definition"""
         yaml_file_path = Path(yaml_file_path)
         
         try:
@@ -61,15 +48,9 @@ class InstructorHandler:
                 if not isinstance(field_info, dict):
                     raise ValueError(f"Invalid field definition for {field_name}")
                 
-                # Handle options field by creating a Literal type
-                if 'options' in field_info:
-                    options = tuple(str(opt) for opt in field_info['options'])
-                    field_type = Literal[options]
-                else:
-                    field_type = InstructorHandler.TYPE_MAPPING.get(
-                        field_info.get('type', 'str'),
-                        str
-                    )
+                field_type = (Literal[tuple(str(opt) for opt in field_info['options'])] 
+                            if 'options' in field_info 
+                            else LLMClient.TYPE_MAPPING.get(field_info.get('type', 'str'), str))
                 
                 fields[field_name] = (
                     field_type,
@@ -81,25 +62,22 @@ class InstructorHandler:
         except (yaml.YAMLError, OSError) as e:
             raise ValueError(f"Failed to parse YAML: {e}")
 
-    async def complete_structured(
+    async def complete(
         self,
-        messages: list[dict[str, str]],
+        prompt_system: str,
+        prompt_user: str,
         response_format: Optional[Type[BaseModel]] = None
     ) -> Union[str, dict[str, Any], BaseModel]:
-        """
-        Generate structured or unstructured completion
+        """Generates structured or unstructured completion"""
+        messages = [
+            {"role": "system", "content": prompt_system},
+            {"role": "user", "content": prompt_user}
+        ]
         
-        Args:
-            messages: List of role/content message pairs
-            response_format: Optional Pydantic model for structure
-            
-        Returns:
-            Structured or unstructured response
-            
-        Raises:
-            RuntimeError: Request or parsing failed
-        """
         try:
+            if self.max_tokens:
+                messages = trim_messages(messages, max_tokens=self.max_tokens, model=self.model)
+                
             if response_format is None:
                 response = await self.client.chat.completions.create(
                     model=self.model,

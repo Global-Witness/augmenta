@@ -1,30 +1,17 @@
-"""
-Data models and exceptions for the cache system.
-"""
+"""Data models for the cache system."""
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Literal
 
+from augmenta.utils.validators import validate_string, validate_int, validate_datetime
+from augmenta.utils.exceptions import ValidationError
+
 ProcessStatusType = Literal['running', 'completed', 'failed']
-
-class CacheError(Exception):
-    """Base exception for cache-related errors."""
-    pass
-
-class DatabaseError(CacheError):
-    """Exception raised for database operation failures."""
-    pass
-
-class ValidationError(CacheError):
-    """Exception raised for data validation failures."""
-    pass
 
 @dataclass(frozen=True)
 class ProcessStatus:
-    """
-    Immutable data class representing process status information.
-    """
+    """Immutable data class representing process status information."""
     process_id: str
     config_hash: str
     start_time: datetime
@@ -34,27 +21,16 @@ class ProcessStatus:
     processed_rows: int
 
     def __post_init__(self) -> None:
-        """Validate status values and row counts."""
-        if not isinstance(self.process_id, str) or not self.process_id.strip():
-            raise ValidationError("Process ID must be a non-empty string")
-            
-        if not isinstance(self.config_hash, str) or not self.config_hash.strip():
-            raise ValidationError("Config hash must be a non-empty string")
-            
-        if not isinstance(self.start_time, datetime):
-            raise ValidationError("Start time must be a datetime object")
-            
-        if not isinstance(self.last_updated, datetime):
-            raise ValidationError("Last updated must be a datetime object")
-            
+        """Validate status values."""
+        validate_string(self.process_id, "Process ID")
+        validate_string(self.config_hash, "Config hash")
+        validate_datetime(self.start_time, "Start time")
+        validate_datetime(self.last_updated, "Last updated")
+        validate_int(self.total_rows, "Total rows")
+        validate_int(self.processed_rows, "Processed rows")
+        
         if self.status not in {'running', 'completed', 'failed'}:
             raise ValidationError(f"Invalid status: {self.status}")
-            
-        if not isinstance(self.total_rows, int) or self.total_rows < 0:
-            raise ValidationError("Total rows must be a non-negative integer")
-            
-        if not isinstance(self.processed_rows, int) or self.processed_rows < 0:
-            raise ValidationError("Processed rows must be a non-negative integer")
             
         if self.processed_rows > self.total_rows:
             raise ValidationError("Processed rows cannot exceed total rows")

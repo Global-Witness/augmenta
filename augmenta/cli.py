@@ -1,6 +1,4 @@
-"""
-Command-line interface for the Augmenta tool.
-"""
+"""Command-line interface for the Augmenta tool."""
 
 import click
 import os
@@ -8,67 +6,28 @@ import asyncio
 import yaml
 import logging
 from typing import Dict, Any, Optional
-from pathlib import Path
 
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
+from augmenta.utils.utils import ProgressTracker
 
-# Configure logging
 logging.getLogger().setLevel(logging.WARNING)
 logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
 
-def prompt_for_api_keys(config_data: Dict[str, Any]) -> Dict[str, str]:
-    """
-    Prompt user for missing API keys required by the configuration.
-    
-    Args:
-        config_data: The loaded configuration dictionary
-        
-    Returns:
-        Dict[str, str]: Dictionary of API key names and values
-    """
+def get_api_keys(config_data: Dict[str, Any], interactive: bool = False) -> Dict[str, str]:
+    """Get required API keys from environment or user input."""
     credentials_manager = CredentialsManager()
     required_keys = credentials_manager.get_required_keys(config_data)
     keys = {key: os.getenv(key) for key in required_keys}
     
-    for key_name, value in keys.items():
-        if not value:
-            value = click.prompt(
-                f"Please enter your {key_name}", 
-                hide_input=True,
-                type=str
-            )
-            os.environ[key_name] = value
+    if interactive:
+        for key_name, value in keys.items():
+            if not value:
+                value = click.prompt(f"Enter your {key_name}", hide_input=True, type=str)
+                os.environ[key_name] = value
     
     return keys
-
-class ProcessContext:
-    """Context manager for process progress display."""
-    
-    def __init__(self, length: int = 100):
-        self.length = length
-        self.current_query = ""
-        self.progress_bar = None
-        
-    def __enter__(self):
-        self.progress_bar = click.progressbar(
-            length=self.length,
-            label='Processing',
-            show_pos=True,
-            item_show_func=lambda _: self.current_query if self.current_query else None
-        )
-        return self
-        
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if self.progress_bar:
-            self.progress_bar.finish()
-            
-    def update_progress(self, current: int, total: int, query: str):
-        """Update progress bar with current status."""
-        self.current_query = f"Processing: {query}"
-        if self.progress_bar:
-            self.progress_bar.update(round((current / total * 100) - self.progress_bar.pos))
 
 @click.command()
 @click.argument('config_path', type=click.Path(exists=True), required=False)
@@ -87,11 +46,7 @@ def main(
     clean_cache: bool = False,
     no_auto_resume: bool = False
 ) -> None:
-    """
-    Augmenta CLI tool for processing data using LLMs.
-    
-    CONFIG_PATH: Path to the YAML configuration file (required unless using --clean-cache)
-    """
+    """Augmenta CLI tool for processing data using LLMs."""
     try:
         if clean_cache:
             handle_cache_cleanup()
@@ -100,30 +55,29 @@ def main(
         if not config_path:
             raise click.UsageError("Config path is required unless using --clean-cache")
 
-        config_path = Path(config_path)
         with open(config_path, 'r', encoding='utf-8') as f:
             config_data = yaml.safe_load(f)
 
         if interactive:
-            prompt_for_api_keys(config_data)
+            get_api_keys(config_data, interactive=True)
 
         if verbose:
             click.echo(f"Processing config file: {config_path}")
 
-        # Process with progress tracking
-        with ProcessContext() as ctx:
-            _, final_process_id = asyncio.run(process_augmenta(
+        with click.progressbar(length=100, label='Processing') as progress:
+            def update_progress(current: int, total: int, query: str):
+                progress.update(round((current / total * 100) - progress.pos))
+                
+            _, process_id = asyncio.run(process_augmenta(
                 config_path,
                 cache_enabled=not no_cache,
                 process_id=resume,
-                progress_callback=ctx.update_progress,
+                progress_callback=update_progress,
                 auto_resume=not no_auto_resume
             ))
 
-        if verbose:
-            click.echo("\nProcessing completed successfully!")
-            if final_process_id:
-                click.echo(f"Process ID: {final_process_id}")
+        if verbose and process_id:
+            click.echo(f"\nProcess completed successfully! ID: {process_id}")
             
     except Exception as e:
         click.echo(f"Error: {str(e)}", err=True)

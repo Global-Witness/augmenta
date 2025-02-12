@@ -1,6 +1,4 @@
-"""
-Database operations and connection management for the cache system.
-"""
+"""Database operations for the cache system."""
 
 import sqlite3
 import logging
@@ -9,7 +7,7 @@ from typing import Generator
 from pathlib import Path
 from datetime import datetime
 
-from .models import DatabaseError
+from augmenta.utils.exceptions import DatabaseError
 
 logger = logging.getLogger(__name__)
 
@@ -41,61 +39,21 @@ class DatabaseConnection:
                 ON DELETE CASCADE
         );
         
-        CREATE INDEX IF NOT EXISTS idx_process_status 
-        ON processes(status, last_updated);
-        
-        CREATE INDEX IF NOT EXISTS idx_config_hash
-        ON processes(config_hash, last_updated);
+        CREATE INDEX IF NOT EXISTS idx_process_status ON processes(status, last_updated);
+        CREATE INDEX IF NOT EXISTS idx_config_hash ON processes(config_hash, last_updated);
     '''
     
     def __init__(self, db_path: Path):
-        """
-        Initialize database connection manager.
-        
-        Args:
-            db_path: Path to SQLite database file
-        """
         self.db_path = db_path
         self._init_db()
     
     def _init_db(self) -> None:
-        """Initialize database schema."""
         with self.get_connection() as conn:
             conn.executescript(self.SCHEMA)
     
-    def _convert_row_to_dict(self, row: sqlite3.Row) -> dict:
-        """
-        Convert a SQLite row to a dictionary with proper type conversion.
-        
-        Args:
-            row: SQLite Row object
-            
-        Returns:
-            dict: Dictionary with converted types
-        """
-        if row is None:
-            return None
-            
-        result = dict(row)
-        
-        # Convert timestamp strings to datetime objects if they're strings
-        for field in ['start_time', 'last_updated', 'created_at']:
-            if field in result and isinstance(result[field], str):
-                result[field] = datetime.fromisoformat(result[field])
-                
-        return result
-    
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        """
-        Get a database connection with retry logic and proper error handling.
-        
-        Yields:
-            sqlite3.Connection: Database connection with row factory enabled
-            
-        Raises:
-            DatabaseError: If connection fails after max retries
-        """
+        """Get a database connection with retry logic."""
         MAX_RETRIES = 3
         DB_TIMEOUT = 30.0
         
@@ -106,12 +64,9 @@ class DatabaseConnection:
                     self.db_path,
                     timeout=DB_TIMEOUT,
                     isolation_level='IMMEDIATE',
-                    detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+                    detect_types=sqlite3.PARSE_DECLTYPES
                 )
-                
-                # Set row factory to return dictionary-like objects
                 conn.row_factory = sqlite3.Row
-                
                 yield conn
                 conn.commit()
                 return
@@ -122,3 +77,14 @@ class DatabaseConnection:
             finally:
                 if conn:
                     conn.close()
+
+    def row_to_dict(self, row: sqlite3.Row) -> dict:
+        """Convert SQLite row to dictionary with proper type conversion."""
+        if not row:
+            return None
+            
+        result = dict(row)
+        for field in ['start_time', 'last_updated', 'created_at']:
+            if field in result and isinstance(result[field], str):
+                result[field] = datetime.fromisoformat(result[field])
+        return result
