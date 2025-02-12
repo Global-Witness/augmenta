@@ -32,8 +32,8 @@ Create a new virtual environment:
 
 ```bash
 cd augmenta
-python -m venv venv
-source venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
 ```
 
 Now install the dependencies and test dependencies:
@@ -70,12 +70,11 @@ python -m pytest
   - [ ] Test support for various models (Claude, Deepseek, etc) 
 - [ ] Check for proper package structure stuff
 - [ ] Documentation, examples, etc
-- [ ] Remove credentials validation?
 
 ### Nice to have
 - [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Add support for PDFs and other file types?
-- [ ] Keep logs (maybe as an option in the CLI?)
+- [ ] Keep logs (maybe as an option in the CLI, maybe in the DB?)
 - [x] Abstract examples in the YAML, add XML function
 - [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
 - [ ] Allow the LLM to set/refine their own search queries
@@ -83,3 +82,4 @@ python -m pytest
 - [ ] Make the search optional, some prompts may only need data that is already available in other columns
 - [ ] Scrape via proxy (oxylabs)
 - [ ] Cost (and [energy](https://huggingface.co/blog/sasha/announcing-ai-energy-score)?) tracker
+- [ ] Remove credentials validation? Or think of a better way without hard-coding.

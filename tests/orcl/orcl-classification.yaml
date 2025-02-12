@@ -44,9 +44,6 @@ structure:
       - very confident
       - somewhat confident
       - not confident
-  examples:
-    type: string
-    description: Which example organisations were offered in the prompt? Name the organisations. To be clear, that is not the organisation you are classifying, but the example organisations that were provided in the prompt.
 examples:
   - input: "ExxonMobil"
     output:
