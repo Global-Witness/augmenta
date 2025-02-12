@@ -2,6 +2,7 @@
 Process-specific caching operations and utilities.
 """
 
+from datetime import datetime
 import click
 import pandas as pd
 from typing import Optional, Dict, Any, Tuple
@@ -112,6 +113,16 @@ def setup_caching(
         
         if not process_id:
             process_id = cache_manager.start_process(combined_hash, df_length)
+        else:
+            # If resuming, ensure the process is still marked as running
+            with cache_manager.db.get_connection() as conn:
+                conn.execute(
+                    """UPDATE processes 
+                       SET status = 'running',
+                           last_updated = ?
+                       WHERE process_id = ?""",
+                    (datetime.now(), process_id)
+                )
             
         cached_results = cache_manager.get_cached_results(process_id)
     

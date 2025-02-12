@@ -289,6 +289,29 @@ class CacheManager:
             f"({process.progress:.1f}%)"
         )
     
+    def mark_process_completed(self, process_id: str) -> None:
+        """
+        Mark a process as completed.
+        
+        Args:
+            process_id: Process identifier
+            
+        Raises:
+            ValidationError: If process_id is invalid
+        """
+        if not isinstance(process_id, str) or not process_id.strip():
+            raise ValidationError("Process ID must be a non-empty string")
+            
+        current_time = datetime.now()
+        
+        self.write_queue.put((
+            """UPDATE processes 
+            SET status = 'completed',
+                last_updated = ?
+            WHERE process_id = ?""",
+            (current_time, process_id)
+        ))
+    
     def cleanup_old_processes(self, days: int = 30) -> None:
         """
         Clean up processes older than specified days.

@@ -212,45 +212,53 @@ async def process_augmenta(
     if cache_enabled:
         df = apply_cached_results(df, process_id, cache_manager)
 
-    # Process remaining rows
-    rows_to_process = [
-        {'index': index, 'data': row}
-        for index, row in df.iterrows()
-        if not cache_enabled or index not in cached_results
-    ]
+    try:
+        # Process remaining rows
+        rows_to_process = [
+            {'index': index, 'data': row}
+            for index, row in df.iterrows()
+            if not cache_enabled or index not in cached_results
+        ]
 
+        processed = 0
+        def update_progress(query: str) -> None:
+            nonlocal processed
+            processed += 1
+            if progress_callback:
+                progress_callback(processed, len(rows_to_process), query)
 
-    processed = 0
-    def update_progress(query: str) -> None:
-        nonlocal processed
-        processed += 1
-        if progress_callback:
-            progress_callback(processed, len(rows_to_process), query)
+        # Process rows concurrently
+        tasks = [
+            process_row(
+                row_data=row,
+                config=config_data,
+                credentials=credentials,
+                cache_manager=cache_manager,
+                process_id=process_id,
+                progress_callback=update_progress
+            ) for row in rows_to_process
+        ]
+        
+        results = await asyncio.gather(*tasks)
 
-    # Process rows concurrently
-    tasks = [
-        process_row(
-            row_data=row,
-            config=config_data,
-            credentials=credentials,
-            cache_manager=cache_manager,
-            process_id=process_id,
-            progress_callback=update_progress
-        ) for row in rows_to_process
-    ]
-    
-    results = await asyncio.gather(*tasks)
+        # Update DataFrame with results
+        for result in results:
+            if result.data:
+                for key, value in result.data.items():
+                    df.at[result.index, key] = value
+            elif result.error:
+                logger.error(f"Row {result.index} failed: {result.error}")
 
-    # Update DataFrame with results
-    for result in results:
-        if result.data:
-            for key, value in result.data.items():
-                df.at[result.index, key] = value
-        elif result.error:
-            logger.error(f"Row {result.index} failed: {result.error}")
-
-    # Save results if output path specified
-    if output_csv := config_data.get("output_csv"):
-        df.to_csv(output_csv, index=False)
-    
-    return df, process_id if cache_enabled else None
+        # Save results if output path specified
+        if output_csv := config_data.get("output_csv"):
+            df.to_csv(output_csv, index=False)
+            
+        # Mark process as completed if caching is enabled
+        if cache_enabled and cache_manager and process_id:
+            cache_manager.mark_process_completed(process_id)
+            
+        return df, process_id if cache_enabled else None
+        
+    except Exception as e:
+        logger.error(f"Error in process_augmenta: {e}", exc_info=True)
+        raise
