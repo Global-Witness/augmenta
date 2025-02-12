@@ -56,16 +56,15 @@ python -m pytest
   - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
   - [x] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
   - [x] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
-  - [ ] DB doesn't update when a process is done running
-  - [ ] Simplify to just `running` and `completed`
+  - [x] DB doesn't update when a process is done running
+  - [x] Simplify to just `running` and `completed`
 - [x] Progress bar for the CLI
 - [x] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
   - [x] Remove output from the prompt
-  - [ ] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
-    - [ ] This isn't working properly (with Gemini, for example)
+  - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
+    - [x] This isn't working properly (with Gemini, for example)
 - [x] Add LLM token limits, triming function, rate limiting
-- [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Tests
   - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
   - [ ] Test support for various models (Claude, Deepseek, etc) 
@@ -74,6 +73,7 @@ python -m pytest
 - [ ] Remove credentials validation?
 
 ### Nice to have
+- [ ] Add support for other search engines (Oxylabs, Bing, etc)
 - [ ] Add support for PDFs and other file types?
 - [ ] Keep logs (maybe as an option in the CLI?)
 - [x] Abstract examples in the YAML, add XML function

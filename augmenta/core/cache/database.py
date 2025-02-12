@@ -23,7 +23,7 @@ class DatabaseConnection:
             config_hash TEXT NOT NULL,
             start_time TIMESTAMP NOT NULL,
             last_updated TIMESTAMP NOT NULL,
-            status TEXT NOT NULL CHECK(status IN ('running', 'completed', 'failed')),
+            status TEXT NOT NULL CHECK(status IN ('running', 'completed')),
             total_rows INTEGER NOT NULL CHECK(total_rows >= 0),
             processed_rows INTEGER NOT NULL DEFAULT 0 CHECK(processed_rows >= 0)
         );

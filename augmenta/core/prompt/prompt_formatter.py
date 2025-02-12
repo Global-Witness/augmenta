@@ -25,10 +25,14 @@ def format_docs(scraped_content: List[Tuple[str, Optional[str]]]) -> str:
 
     return f"<documents>{''.join(documents)}</documents>"
 
-def format_examples(examples_yaml: str) -> str:
-    """Formats YAML examples into XML structure"""
+def format_examples(examples_yaml: str | list) -> str:
+    """Formats YAML examples or list into XML structure"""
     try:
-        data = yaml.safe_load(examples_yaml)
+        if isinstance(examples_yaml, str):
+            data = yaml.safe_load(examples_yaml)
+        else:
+            data = {'examples': examples_yaml}  # Wrap list in expected structure
+            
         if not data or 'examples' not in data:
             return ""
         

@@ -77,12 +77,12 @@ async def process_row(
         for column, value in row.items():
             prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
         
-        if examples_yaml := config["prompt"].get("examples"):
+        if examples_yaml := config.get("examples"):
             if examples_text := format_examples(examples_yaml):
                 prompt_user = f'{prompt_user}\n\n{examples_text}'
         
         prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(urls_text)}'
-        
+
         Structure = LLMClient.create_structure_class(config["config_path"])
         response = await make_request_llm(
             prompt_system=config["prompt"]["system"],

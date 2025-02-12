@@ -7,7 +7,7 @@ from typing import Literal
 from augmenta.utils.validators import validate_string, validate_int, validate_datetime
 from augmenta.utils.exceptions import ValidationError
 
-ProcessStatusType = Literal['running', 'completed', 'failed']
+ProcessStatusType = Literal['running', 'completed']
 
 @dataclass(frozen=True)
 class ProcessStatus:
@@ -29,7 +29,7 @@ class ProcessStatus:
         validate_int(self.total_rows, "Total rows")
         validate_int(self.processed_rows, "Processed rows")
         
-        if self.status not in {'running', 'completed', 'failed'}:
+        if self.status not in {'running', 'completed'}:
             raise ValidationError(f"Invalid status: {self.status}")
             
         if self.processed_rows > self.total_rows:
