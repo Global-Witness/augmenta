@@ -7,6 +7,7 @@ import logging
 from contextlib import contextmanager
 from typing import Generator
 from pathlib import Path
+from datetime import datetime
 
 from .models import DatabaseError
 
@@ -62,6 +63,28 @@ class DatabaseConnection:
         with self.get_connection() as conn:
             conn.executescript(self.SCHEMA)
     
+    def _convert_row_to_dict(self, row: sqlite3.Row) -> dict:
+        """
+        Convert a SQLite row to a dictionary with proper type conversion.
+        
+        Args:
+            row: SQLite Row object
+            
+        Returns:
+            dict: Dictionary with converted types
+        """
+        if row is None:
+            return None
+            
+        result = dict(row)
+        
+        # Convert timestamp strings to datetime objects if they're strings
+        for field in ['start_time', 'last_updated', 'created_at']:
+            if field in result and isinstance(result[field], str):
+                result[field] = datetime.fromisoformat(result[field])
+                
+        return result
+    
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
         """
@@ -82,9 +105,13 @@ class DatabaseConnection:
                 conn = sqlite3.connect(
                     self.db_path,
                     timeout=DB_TIMEOUT,
-                    isolation_level='IMMEDIATE'
+                    isolation_level='IMMEDIATE',
+                    detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
                 )
+                
+                # Set row factory to return dictionary-like objects
                 conn.row_factory = sqlite3.Row
+                
                 yield conn
                 conn.commit()
                 return

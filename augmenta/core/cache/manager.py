@@ -225,7 +225,8 @@ class CacheManager:
             ).fetchone()
             
             if row:
-                return ProcessStatus(**dict(row))
+                row_dict = self.db._convert_row_to_dict(row)
+                return ProcessStatus(**row_dict)
             return None
     
     def find_unfinished_process(self, config_hash: str) -> Optional[ProcessStatus]:
@@ -254,7 +255,8 @@ class CacheManager:
             """, (config_hash,)).fetchone()
             
             if row:
-                return ProcessStatus(**dict(row))
+                row_dict = self.db._convert_row_to_dict(row)
+                return ProcessStatus(**row_dict)
             return None
     
     def get_process_summary(self, process: ProcessStatus) -> str:

@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 
 from augmenta.core.augmenta import process_augmenta
-from augmenta.core.cache.process import handle_process_resumption, handle_cache_cleanup
+from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
 
 # Configure logging
@@ -68,7 +68,7 @@ class ProcessContext:
         """Update progress bar with current status."""
         self.current_query = f"Processing: {query}"
         if self.progress_bar:
-            self.progress_bar.update(round(current / total * 100 - self.progress_bar.pos, 1))
+            self.progress_bar.update(round((current / total * 100) - self.progress_bar.pos))
 
 @click.command()
 @click.argument('config_path', type=click.Path(exists=True), required=False)

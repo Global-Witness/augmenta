@@ -54,8 +54,9 @@ python -m pytest
   - [x] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
 - [x] Caching (for resuming interrupted augmentations) using SQLite
   - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
-  - [ ] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
-  - [ ] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
+  - [x] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
+  - [x] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
+  - [ ] DB doesn't update when a process is done running
 - [x] Progress bar for the CLI
 - [x] Validation of output
   - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
