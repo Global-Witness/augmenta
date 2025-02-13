@@ -18,10 +18,10 @@ Augmenta aims to address this by using search data to improve the reliability of
 
 First, make sure you have Python 3.8 or later installed on your computer.
 
-Then, open your terminal and run the following command to install this library:
+Then, open your terminal and run the following command to install Augmenta:
 
 ```bash
-pip install augmenta
+pipx install git+https://github.com/Global-Witness/augmenta.git
 ```
 
 ## Usage
