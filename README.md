@@ -16,7 +16,7 @@ Augmenta aims to address this by using search data to improve the reliability of
 
 ## Installation
 
-First, make sure you have Python 3.8 or later installed on your computer.
+First, make sure you have Python 3.8 or later and [`pipx`](https://pipx.pypa.io/latest/installation/#installing-pipx) installed on your computer.
 
 Then, open your terminal and run the following command to install Augmenta:
 
