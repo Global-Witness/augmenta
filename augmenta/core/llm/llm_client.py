@@ -1,12 +1,16 @@
 from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal
 from pathlib import Path
 from functools import lru_cache
-from pydantic import BaseModel, Field, create_model
+import logging
 import yaml
+from pydantic import BaseModel, Field, create_model
 import instructor
+
+# This gets rid of the pesky LLM costs lookup message
+logging.getLogger('httpx').setLevel(logging.WARNING)
+
 from litellm import Router
 from litellm.utils import trim_messages
-import logging
 
 logger = logging.getLogger(__name__)
 

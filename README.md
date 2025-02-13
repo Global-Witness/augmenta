@@ -6,11 +6,19 @@
 [![Changelog](https://img.shields.io/github/v/release/Global-Witness/augmenta?include_prereleases&label=changelog)](https://github.com/Global-Witness/augmenta/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/Global-Witness/augmenta/blob/main/LICENSE)
 
-AI-powered library for data enrichment using search results
+Augmenta is a tool for enhancing datasets with search data, parsed by AI.
+
+## Why?
+
+Large Language Models (LLMs) are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
+
+Augmenta aims to address this by using search data to improve the reliability of the information provided by LLMs. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", and has been shown to significantly improve output quality.
 
 ## Installation
 
-Install this library using `pip`:
+First, make sure you have Python 3.8 or later installed on your computer.
+
+Then, open your terminal and run the following command to install this library:
 
 ```bash
 pip install augmenta
@@ -18,13 +26,61 @@ pip install augmenta
 
 ## Usage
 
-Normal run: `augmenta config.yaml`
+### Configuration file
 
-Disable cache: `augmenta config.yaml --no-cache`
+Create a new directory for your project, copy the data you want processed into it, then create a new file called `config.yaml` and open it in your text editor. Your [YAML](https://en.wikipedia.org/wiki/YAML) file will instruct this tool on how you want to use it.
 
-Resume process: `augmenta config.yaml --resume PROCESS_ID`
+Here is an example of what it might look like:
 
-Clean old cache: `augmenta --clean-cache`
+```yaml
+input_csv: original_data.csv
+output_csv: processed_data.csv
+model:
+  name: openai/gpt-4o-mini
+query_col: org
+search:
+  engine: brave
+prompt:
+  system: You are an expert at classifying companies.
+  user: Please classify whether {{org}} is a for-profit company, and NGO, a government department, or something else.
+structure:
+  org_type:
+    type: str
+    description: What kind of organisation is it?
+    options:
+      - for-profit
+      - NGO
+      - government department
+      - other
+  other:
+    type: str
+    description: If other, what is it?
+examples:
+  - input: Microsoft
+    output:
+      org_type: for-profit company
+  - input: Global Witness
+    output:
+      org_type: NGO
+  - input: BBC
+    output:
+      org_type: other
+      other: Public service broadcaster
+```
+
+Let's break down what each of these fields means.
+
+- `input_csv`: The name of the CSV file you want to augment. This file should be in the same directory as your `config.yaml` file.
+- `output_csv`: The name of the CSV file you want to create with the augmented data.
+- `model`: The name of the model you want to use for the AI. You can find a list of models [here](https://docs.litellm.ai/docs/providers).
+- `query_col`: The name of the column in your input CSV that you want to use as the search query. Augmenta will retrieve results for each row in this column and use them to augment your data.
+- `prompt`: The instructions you want the AI to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
+- `structure`: The structure of the output data. You can think of this as the columns you want added to your original CSV.
+- `examples`: Examples of the output data. These will help the AI better understand what you're looking for.
+
+Save your YAML and open a terminal in the root directory of your project. You can then run `augmenta config.yaml` to get started.
+
+By default, Augmenta will save your progress so that you can resume if the process gets interrupted at any point. You can find options for working with the cache [here](docs/cache.md).
 
 ## Development
 
@@ -47,39 +103,3 @@ To run the tests:
 ```bash
 python -m pytest
 ```
-
-
-## To-do
-- [x] Refactor to async (use `aiohttp` for requests)
-  - [x] Brave's free plan has a rate limit of 1 query/second, won't work with multithreading
-- [x] Caching (for resuming interrupted augmentations) using SQLite
-  - [x] Remove the need to specify the config file to clean cache `augmenta --clean-cache`
-  - [x] Fix the bug where it sometimes reads in a completed cache. Or maybe chech if the CSV has changed as well?
-  - [x] More intelligent caching. Automatically offer to resume if interrupted (yes/no)
-  - [x] DB doesn't update when a process is done running
-  - [x] Simplify to just `running` and `completed`
-- [x] Progress bar for the CLI
-- [x] Validation of output
-  - [x] [Instructor](https://python.useinstructor.com/) for models wihtout a JSON schema
-  - [x] Remove output from the prompt
-  - [x] Declare [possible outputs](https://python.useinstructor.com/concepts/enums/) in the YAML
-    - [x] This isn't working properly (with Gemini, for example)
-- [x] Add LLM token limits, triming function, rate limiting
-- [ ] Tests
-  - [ ] Add [tests](https://python.useinstructor.com/examples/classification/#testing-and-evaluation)
-  - [ ] Test support for various models (Claude, Deepseek, etc) 
-- [ ] Check for proper package structure stuff
-- [ ] Documentation, examples, etc
-
-### Nice to have
-- [ ] Add support for other search engines (Oxylabs, Bing, etc)
-- [ ] Add support for PDFs and other file types?
-- [ ] Keep logs (maybe as an option in the CLI, maybe in the DB?)
-- [x] Abstract examples in the YAML, add XML function
-- [ ] Use chain-of-thought for more complex queries (or leave this to the user, but document it)
-- [ ] Allow the LLM to set/refine their own search queries
-- [x] Make it so that you can refer to other columns in the prompt
-- [ ] Make the search optional, some prompts may only need data that is already available in other columns
-- [ ] Scrape via proxy (oxylabs)
-- [ ] Cost (and [energy](https://huggingface.co/blog/sasha/announcing-ai-energy-score)?) tracker
-- [ ] Remove credentials validation? Or think of a better way without hard-coding.

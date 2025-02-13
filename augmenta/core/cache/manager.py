@@ -5,6 +5,7 @@ import threading
 import uuid
 import logging
 import atexit
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any
@@ -34,7 +35,7 @@ class CacheManager:
             if hasattr(self, 'initialized'):
                 return
                 
-            self.cache_dir = cache_dir or Path.home() / '.augmenta' / 'cache'
+            self.cache_dir = cache_dir or Path(os.getcwd()) / '.augmenta' / 'cache'
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = self.cache_dir / 'cache.db'
             

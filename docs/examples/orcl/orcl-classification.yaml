@@ -1,5 +1,5 @@
-input_csv: tests/orcl/orcl.csv
-output_csv: tests/orcl/orcl-output.csv
+input_csv: docs/examples/orcl/orcl.csv
+output_csv: docs/examples/orcl/orcl-output.csv
 model:
   name: openai/gpt-4o-mini
   # rate_limit: 1

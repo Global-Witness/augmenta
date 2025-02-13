@@ -10,7 +10,6 @@ from typing import Dict, Any, Optional
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
-from augmenta.utils.utils import ProgressTracker
 
 logging.getLogger().setLevel(logging.WARNING)
 logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
