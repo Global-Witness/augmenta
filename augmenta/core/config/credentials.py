@@ -2,7 +2,7 @@
 
 import os
 from typing import Dict, Set
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import logging
 
 class CredentialsManager:
@@ -21,10 +21,20 @@ class CredentialsManager:
             load_env: Whether to automatically load .env file
         """
         if load_env:
-            # Add debug logging
-            logging.info(f"Current working directory: {os.getcwd()}")
-            env_loaded = load_dotenv()
-            logging.info(f".env file loaded: {env_loaded}")
+            # Explicitly look for .env in current working directory
+            dotenv_path = os.path.join(os.getcwd(), '.env')
+            logging.info(f"Looking for .env at: {dotenv_path}")
+            
+            if os.path.exists(dotenv_path):
+                env_loaded = load_dotenv(dotenv_path=dotenv_path)
+                logging.info(f".env file loaded: {env_loaded}")
+            else:
+                logging.warning(f".env file not found at {dotenv_path}")
+            
+            cwd = os.getcwd()
+            dotenv_path = find_dotenv()
+            logging.info(f"Current working directory: {cwd}")
+            logging.info(f"Found .env at: {dotenv_path}")
             
     def get_required_keys(self, config: Dict) -> Set[str]:
         """Get required API keys based on configuration.

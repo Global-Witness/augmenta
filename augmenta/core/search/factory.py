@@ -1,6 +1,7 @@
 from typing import Callable
 from .providers.base import SearchProvider
 from .providers.brave import BraveSearchProvider
+from .providers.duckduckgo import DuckDuckGoSearchProvider
 from .providers.oxylabs import OxylabsSearchProvider
 
 ProviderCreator = Callable[[dict[str, str]], SearchProvider]
@@ -12,6 +13,10 @@ class SearchProviderFactory:
             creds.get("OXYLABS_USERNAME"),
             creds.get("OXYLABS_PASSWORD"),
             "google"
+        ),
+        "duckduckgo": lambda creds: DuckDuckGoSearchProvider(
+            region=creds.get("DUCKDUCKGO_REGION"),
+            safesearch=creds.get("DUCKDUCKGO_SAFESEARCH", "moderate")
         ),
         "oxylabs_bing": lambda creds: OxylabsSearchProvider(
             creds.get("OXYLABS_USERNAME"),

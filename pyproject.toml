@@ -20,6 +20,7 @@ dependencies = [
     "trafilatura>=2.0.0",
     "pydantic>=2.0.0",
     "brave-search @ git+https://github.com/Global-Witness/brave-api.git",
+    "duckduckgo-search>=7.4.0",
     "oxylabs>=1.0.0"
 ]
 

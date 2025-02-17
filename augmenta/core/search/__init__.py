@@ -1,7 +1,12 @@
 from typing import List
 from .factory import SearchProviderFactory
 from augmenta.utils.utils import RateLimiter
-from .providers import SearchProvider, BraveSearchProvider, OxylabsSearchProvider
+from .providers import (
+    SearchProvider, 
+    BraveSearchProvider,
+    DuckDuckGoSearchProvider,
+    OxylabsSearchProvider
+)
 
 _rate_limiter: RateLimiter | None = None
 
@@ -30,4 +35,10 @@ async def search_web(
     except Exception as e:
         raise RuntimeError(f"Search failed: {str(e)}") from e
 
-__all__ = ['search_web', 'SearchProvider', 'BraveSearchProvider', 'OxylabsSearchProvider']
+__all__ = [
+    'search_web',
+    'SearchProvider',
+    'BraveSearchProvider',
+    'DuckDuckGoSearchProvider',
+    'OxylabsSearchProvider'
+]
