@@ -1,33 +1,45 @@
-from typing import Callable
+from typing import Callable, Dict, Any
 from .providers.base import SearchProvider
 from .providers.brave import BraveSearchProvider
 from .providers.duckduckgo import DuckDuckGoSearchProvider
 from .providers.oxylabs import OxylabsSearchProvider
 
-ProviderCreator = Callable[[dict[str, str]], SearchProvider]
+ProviderCreator = Callable[[dict[str, str], Dict[str, Any]], SearchProvider]
 
 class SearchProviderFactory:
+    # Reserved keys that shouldn't be passed to the search provider
+    _reserved_keys = {'engine', 'results', 'rate_limit'}
+    
     _providers: dict[str, ProviderCreator] = {
-        "brave": lambda creds: BraveSearchProvider(creds.get("BRAVE_API_KEY")),
-        "oxylabs_google": lambda creds: OxylabsSearchProvider(
+        "brave": lambda creds, params: BraveSearchProvider(
+            creds.get("BRAVE_API_KEY"),
+            **params
+        ),
+        "oxylabs_google": lambda creds, params: OxylabsSearchProvider(
             creds.get("OXYLABS_USERNAME"),
             creds.get("OXYLABS_PASSWORD"),
-            "google"
+            "google",
+            **params
         ),
-        "duckduckgo": lambda creds: DuckDuckGoSearchProvider(
+        "duckduckgo": lambda creds, params: DuckDuckGoSearchProvider(
             region=creds.get("DUCKDUCKGO_REGION"),
-            safesearch=creds.get("DUCKDUCKGO_SAFESEARCH", "moderate")
+            safesearch=creds.get("DUCKDUCKGO_SAFESEARCH", "moderate"),
+            **params
         ),
-        "oxylabs_bing": lambda creds: OxylabsSearchProvider(
+        "oxylabs_bing": lambda creds, params: OxylabsSearchProvider(
             creds.get("OXYLABS_USERNAME"),
             creds.get("OXYLABS_PASSWORD"),
-            "bing"
+            "bing",
+            **params
         )
     }
     
     @classmethod
-    def create(cls, engine: str, credentials: dict[str, str]) -> SearchProvider:
+    def create(cls, engine: str, credentials: dict[str, str], config: Dict[str, Any]) -> SearchProvider:
         if engine not in cls._providers:
             raise ValueError(f"Unsupported search engine: {engine}")
             
-        return cls._providers[engine](credentials)
+        # Filter out reserved keys from the config
+        search_params = {k: v for k, v in config.items() if k not in cls._reserved_keys}
+        
+        return cls._providers[engine](credentials, search_params)

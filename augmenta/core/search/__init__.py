@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 from .factory import SearchProviderFactory
 from augmenta.utils.utils import RateLimiter
 from .providers import (
@@ -15,7 +15,8 @@ async def search_web(
     results: int,
     engine: str,
     rate_limit: float,
-    credentials: dict[str, str]
+    credentials: dict[str, str],
+    search_config: Dict[str, Any]
 ) -> List[str]:
     if not query.strip():
         raise ValueError("Search query cannot be empty")
@@ -28,7 +29,7 @@ async def search_web(
         _rate_limiter = RateLimiter(rate_limit)
         
     try:
-        provider = SearchProviderFactory.create(engine, credentials)
+        provider = SearchProviderFactory.create(engine, credentials, search_config)
         await _rate_limiter.acquire()
         return await provider.search(query, results)
         

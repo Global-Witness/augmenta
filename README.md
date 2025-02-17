@@ -24,7 +24,13 @@ Then, open your terminal and run the following command to install Augmenta:
 pipx install git+https://github.com/Global-Witness/augmenta.git
 ```
 
-You may wish to do this in a virtual environment to avoid conflicts with other Python packages.
+You may wish to do this in a virtual environment to avoid conflicts with other Python packages. This will limit Augmenta's scope to the current directory.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
+pip install git+https://github.com/Global-Witness/augmenta.git
+```
 
 ## Usage
 

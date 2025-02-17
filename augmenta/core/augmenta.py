@@ -68,7 +68,8 @@ async def process_row(
             results=config["search"]["results"],
             engine=config["search"]["engine"],
             rate_limit=config["search"].get("rate_limit"),
-            credentials=credentials
+            credentials=credentials,
+            search_config=config["search"]  # Pass the entire search config
         )
         
         urls_text = await extract_urls(urls)

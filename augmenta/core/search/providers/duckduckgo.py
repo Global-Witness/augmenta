@@ -3,10 +3,11 @@ from duckduckgo_search import DDGS
 from .base import SearchProvider
 
 class DuckDuckGoSearchProvider(SearchProvider):
-    def __init__(self, region: str | None = None, safesearch: str = "moderate"):
+    def __init__(self, region: str | None = None, safesearch: str = "moderate", **kwargs):
         self.region = region or "wt-wt"
         self.safesearch = safesearch
         self.client = DDGS()
+        self.kwargs = kwargs
         
     async def search(self, query: str, results: int) -> List[str]:
         try:
@@ -14,7 +15,8 @@ class DuckDuckGoSearchProvider(SearchProvider):
                 keywords=query,
                 region=self.region,
                 safesearch=self.safesearch,
-                max_results=results
+                max_results=results,
+                **self.kwargs
             )
             
             if not search_results:

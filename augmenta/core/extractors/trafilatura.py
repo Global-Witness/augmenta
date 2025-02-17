@@ -16,6 +16,7 @@ class TrafilaturaExtractor(TextExtractor):
     MAX_CONTENT_SIZE: Final[int] = 10 * 1024 * 1024  # 10MB
     MAX_RETRIES: Final[int] = 3
     RETRY_DELAY: Final[float] = 1.0
+    USER_AGENT: Final[str] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
     
     def __init__(self) -> None:
         self.config = use_config()
@@ -33,9 +34,13 @@ class TrafilaturaExtractor(TextExtractor):
             sock_read=timeout
         )
         
+        headers = {
+            "User-Agent": self.USER_AGENT
+        }
+        
         for attempt in range(self.MAX_RETRIES):
             try:
-                async with aiohttp.ClientSession(timeout=timeout_settings) as session:
+                async with aiohttp.ClientSession(timeout=timeout_settings, headers=headers) as session:
                     async with session.get(url, allow_redirects=True, ssl=True) as response:
                         if response.status != 200:
                             logger.warning(f"HTTP {response.status} for {url}")

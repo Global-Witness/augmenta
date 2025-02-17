@@ -1,0 +1,166 @@
+---
+title: "Electoral Commission donations data"
+format: gfm
+---
+
+The Electoral Commission [publishes data](https://search.electoralcommission.org.uk/?currentPage=1&rows=100&sort=AcceptedDate&order=desc&tab=1&et=pp&et=ppm&et=tp&et=perpar&et=rd&isIrishSourceYes=true&isIrishSourceNo=true&prePoll=false&postPoll=true&register=gb&register=ni&register=none&optCols=Register&optCols=CampaigningName&optCols=AccountingUnitsAsCentralParty&optCols=IsSponsorship&optCols=IsIrishSource&optCols=RegulatedDoneeType&optCols=CompanyRegistrationNumber&optCols=Postcode&optCols=NatureOfDonation&optCols=PurposeOfVisit&optCols=DonationAction&optCols=ReportedDate&optCols=IsReportedPrePoll&optCols=ReportingPeriodName&optCols=IsBequest&optCols=IsAggregation) on donations to political parties in the UK. This data contains some information about the donor, such as their name and status, but not much else.
+
+This example shows how to use Augmenta to enrich this data with additional information about the donors, such as their industry, location, and size. This can help to identify patterns in donations, such as which industries are more likely to donate to which parties.
+
+## Data prep
+
+```{r}
+#| output: false
+library(tidyverse)
+library(gt)
+```
+
+First, let's download the data.
+
+```{r}
+#| output: false
+donations_raw <- read_csv("https://search.electoralcommission.org.uk/api/csv/Donations?start={start}&rows=100&query=&sort=AcceptedDate&order=desc&et=pp&date=Accepted&from=2024-07-01&to=2024-09-30&rptPd=&prePoll=false&postPoll=true&register=ni&register=gb&isIrishSourceYes=true&isIrishSourceNo=true&includeOutsideSection75=true")
+```
+
+For the purposes of this example, we'll only keep the columns that contain information about the donor. We'll also only look at the first 50 rows to keep things simple.
+
+```{r}
+donations <- donations_raw |>
+  slice_head(n = 10) |>
+  select(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber, Value) |>
+  mutate(Value = parse_number(Value)) |>
+  # remove duplicate rows
+  group_by(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber) |>
+  summarise(Value = sum(Value)) |>
+  ungroup()
+```
+
+Finally, let's save this data as a CSV file.
+
+```{r}
+write_csv(donations, "data/donations.csv")
+```
+
+## Augmentation
+
+Now that we have our data, we can use Augmenta to enrich it with additional information about the donors.
+
+## Setup
+
+First, we need to configure our project. Create a new file called `config.yaml` and add the following:
+
+```yaml
+input_csv: data/donations.csv
+output_csv: data/donations_classified.csv
+model:
+  name: openai/gpt-4o-mini
+  # rate_limit: 1
+  max_tokens: 20000
+query_col: DonorName
+search:
+  engine: brave
+  results: 10
+  rate_limit: 1.5
+prompt:
+  system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
+  user: |
+    # Instructions
+    The following documents contain information extracted from a web search for "{{DonorName}}". Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, or an individual. In the case of an individual, you should classify them based on their profession or the industry they are closest associated with.
+
+    We also know that the donor is a {{DonorStatus}}.
+
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.
+structure:
+  industry:
+    type: str
+    description: What industry is this organisation or person associated with?
+    options:
+      - Agriculture, Forestry and Fishing
+      - Mining and Quarrying
+      - Manufacturing
+      - Electricity, gas, steam and air conditioning supply
+      - Water supply, sewerage, waste management and remediation activities
+      - Construction
+      - Wholesale and retail trade; repair of motor vehicles and motorcycles
+      - Transportation and storage
+      - Accommodation and food service activities
+      - Information and communication
+      - Financial and insurance activities
+      - Real estate activities
+      - Professional, scientific and technical activities
+      - Administrative and support service activities
+      - Public administration and defence; compulsory social security
+      - Education
+      - Human health and social work activities
+      - Arts, entertainment and recreation
+      - Political group
+      - NGO or think-tank
+      - Trade union
+      - Other
+      - Don't know
+  explanation:
+    type: str
+    description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
+  confidence:
+    type: str
+    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not confident".
+    options:
+      - very confident
+      - somewhat confident
+      - not confident
+examples:
+  - input: "Charles A Daniel-Hobbs"
+    output:
+      industry: Financial and insurance activities
+      explanation: |
+        According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
+        
+        A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
+      confidence: somewhat confident
+  - input: "Unite the Union"
+    output:
+      industry: Trade union
+      explanation: |
+        Unite is [one of the two largest trade unions in the UK](https://en.wikipedia.org/wiki/Unite_the_Union), with over 1.2 million members. It represents various industries, such as construction, manufacturing, transport, logistics and other sectors.
+      confidence: very confident
+  - input: "Google UK Limited"
+    output:
+      industry: Information and communication
+      explanation: |
+        Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
+
+        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
+      confidence: very confident
+```
+
+A few things to note about this configuration:
+
+- We're using Brave due to its generous free API tier, but Google will probably work better.
+- Because our dataset is US-centric, we're setting the country to "GB" in Brave. This should help to filter some of the irrelevant results.
+- The industries are based on the [Standard Industrial Classification](https://resources.companieshouse.gov.uk/sic/) groups. You can probably come up with something more clever.
+
+Because we want to use Brave and GPT-4o-mini, we need access keys for both services. Save them to a file called `.env`:
+
+```
+BRAVE_API_KEY=YOUR_KEY_GOES_HERE
+OPENAI_API_KEY=YOUR_KEY_GOES_HERE
+```
+
+## Running the augmentation
+
+Make sure you have `augmenta` [installed](https://github.com/Global-Witness/augmenta/?tab=readme-ov-file#installation), open the terminal and navigate to the directory where you saved the data, configuration file and API keys.
+
+Run the following command to start the classification.
+
+```bash
+augmenta config.yaml
+```
+
+This should take a few minutes. Once it's done, you should see a new file called `data/donations_classified.csv` with the augmented data.
+
+```{r}
+read_csv("data/donations_classified.csv") |>
+  select(-DonorStatus, -CompanyRegistrationNumber) |>
+  gt() |>
+  fmt_markdown(columns = c(explanation))
+```

@@ -1,0 +1,81 @@
+input_csv: data/donations.csv
+output_csv: data/donations_classified.csv
+model:
+  name: openai/gpt-4o-mini
+  max_tokens: 20000
+query_col: DonorName
+search:
+  engine: brave
+  country: GB
+  results: 10
+  rate_limit: 2
+prompt:
+  system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
+  user: |
+    # Instructions
+    The following documents contain information extracted from a web search for "{{DonorName}}". Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, or an individual. In the case of an individual, you should classify them based on their profession or the industry they are closest associated with.
+
+    We also know that the donor is a {{DonorStatus}}.
+
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.
+structure:
+  industry:
+    type: str
+    description: What industry is this organisation or person associated with?
+    options:
+      - Agriculture, Forestry and Fishing
+      - Mining and Quarrying
+      - Manufacturing
+      - Electricity, gas, steam and air conditioning supply
+      - Water supply, sewerage, waste management and remediation activities
+      - Construction
+      - Wholesale and retail trade; repair of motor vehicles and motorcycles
+      - Transportation and storage
+      - Accommodation and food service activities
+      - Information and communication
+      - Financial and insurance activities
+      - Real estate activities
+      - Professional, scientific and technical activities
+      - Administrative and support service activities
+      - Public administration and defence; compulsory social security
+      - Education
+      - Human health and social work activities
+      - Arts, entertainment and recreation
+      - Political group
+      - NGO or think-tank
+      - Trade union
+      - Other
+      - Don't know
+  explanation:
+    type: str
+    description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
+  confidence:
+    type: str
+    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not confident".
+    options:
+      - very confident
+      - somewhat confident
+      - not confident
+examples:
+  - input: "Charles A Daniel-Hobbs"
+    output:
+      industry: Financial and insurance activities
+      explanation: |
+        According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
+        
+        A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
+      confidence: somewhat confident
+  - input: "Unite the Union"
+    output:
+      industry: Trade union
+      explanation: |
+        Unite is [one of the two largest trade unions in the UK](https://en.wikipedia.org/wiki/Unite_the_Union), with over 1.2 million members. It represents various industries, such as construction, manufacturing, transport, logistics and other sectors.
+      confidence: very confident
+  - input: "Google UK Limited"
+    output:
+      industry: Information and communication
+      explanation: |
+        Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
+
+        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
+      confidence: very confident

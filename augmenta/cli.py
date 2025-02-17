@@ -11,7 +11,8 @@ from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
 
-logging.basicConfig(level=logging.WARNING)
+logging.getLogger().setLevel(logging.WARNING)
+logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
 
 def get_api_keys(config_data: Dict[str, Any], interactive: bool = False) -> Dict[str, str]:
     """Get required API keys from environment or user input."""
