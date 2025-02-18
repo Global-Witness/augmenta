@@ -4,6 +4,7 @@ from augmenta.utils.utils import RateLimiter
 from .providers import (
     SearchProvider, 
     BraveSearchProvider,
+    GoogleSearchProvider,
     DuckDuckGoSearchProvider,
     OxylabsSearchProvider
 )
@@ -40,6 +41,7 @@ __all__ = [
     'search_web',
     'SearchProvider',
     'BraveSearchProvider',
+    'GoogleSearchProvider',
     'DuckDuckGoSearchProvider',
     'OxylabsSearchProvider'
 ]

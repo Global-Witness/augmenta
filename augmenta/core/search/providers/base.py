@@ -1,7 +1,69 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Dict, List, Optional
+import httpx
+from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 
 class SearchProvider(ABC):
+    """Base search provider with common functionality."""
+    
+    def __init__(self, **kwargs):
+        """Initialize search provider with common parameters."""
+        self.kwargs = kwargs
+
+    @staticmethod
+    def _normalize_url(url: str) -> str:
+        """Normalize URL by removing tracking parameters."""
+        return url.split("?")[0] if "?" in url else url
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        """Normalize text by removing extra whitespace."""
+        return " ".join(text.split())
+
+    async def _make_request(
+        self,
+        url: str,
+        method: str = "GET",
+        headers: Optional[Dict] = None,
+        params: Optional[Dict] = None,
+        data: Optional[Dict] = None,
+        retry_attempts: int = 3,
+        retry_delay: int = 2
+    ) -> Optional[Dict | str]:
+        """Make HTTP request with retry logic.
+        
+        Args:
+            url: Request URL
+            method: HTTP method (GET/POST)
+            headers: Request headers
+            params: Query parameters for GET requests
+            data: POST data
+            retry_attempts: Number of retry attempts
+            retry_delay: Delay between retries in seconds
+            
+        Returns:
+            Response data (JSON or text) or None if request fails
+        """
+        async for attempt in AsyncRetrying(
+            stop=stop_after_attempt(retry_attempts),
+            wait=wait_fixed(retry_delay)
+        ):
+            with attempt:
+                async with httpx.AsyncClient() as client:
+                    response = await client.request(
+                        method,
+                        url,
+                        headers=headers,
+                        params=params,
+                        data=data,
+                        follow_redirects=True,
+                        timeout=10.0
+                    )
+                    response.raise_for_status()
+                    return (response.json() if response.headers.get('content-type', '').startswith('application/json')
+                           else response.text)
+        return None
+
     @abstractmethod
     async def search(self, query: str, results: int) -> List[str]:
         """Execute search and return list of result URLs."""

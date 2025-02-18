@@ -10,6 +10,7 @@ class CredentialsManager:
     
     CREDENTIAL_REQUIREMENTS: Dict[str, Set[str]] = {
         'brave': {'BRAVE_API_KEY'},
+        'google': {'GOOGLE_API_KEY', 'GOOGLE_CX'},
         'oxylabs_google': {'OXYLABS_USERNAME', 'OXYLABS_PASSWORD'},
         'oxylabs_bing': {'OXYLABS_USERNAME', 'OXYLABS_PASSWORD'}
     }

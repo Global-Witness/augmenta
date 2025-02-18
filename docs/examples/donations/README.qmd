@@ -144,7 +144,7 @@ OPENAI_API_KEY=YOUR_KEY_GOES_HERE
 
 ## Running the augmentation
 
-Make sure you have `augmenta` [installed](/README.md), open the terminal and navigate to the directory where you saved the data, configuration file and API keys.
+Make sure you have `augmenta` [installed](https://github.com/Global-Witness/augmenta/tree/main?tab=readme-ov-file#installation), open the terminal and navigate to the directory where you saved the data, configuration file and API keys.
 
 Run the following command to start the classification.
 
@@ -172,6 +172,7 @@ First, the results are only as good [as the information they're fed](https://en.
 This is particularly an issue with individuals with generic names. For example, it's likely that Patricia Bell in the dataset is not the University of Georgia professor surfaced by the search engine and classified by the LLM. This doesn't stop the LLM from offering a high degree of confidence in its classification.
 
 We can work around these limitations in a few ways:
+
 - Increase the number of results to get a better picture of the donor.
 - Use a better search engine and/or more specific search query.
 - Be more descriptive about these edge cases in the prompt and examples.

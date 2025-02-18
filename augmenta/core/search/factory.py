@@ -1,6 +1,7 @@
 from typing import Callable, Dict, Any
 from .providers.base import SearchProvider
 from .providers.brave import BraveSearchProvider
+from .providers.google import GoogleSearchProvider
 from .providers.duckduckgo import DuckDuckGoSearchProvider
 from .providers.oxylabs import OxylabsSearchProvider
 
@@ -13,6 +14,11 @@ class SearchProviderFactory:
     _providers: dict[str, ProviderCreator] = {
         "brave": lambda creds, params: BraveSearchProvider(
             creds.get("BRAVE_API_KEY"),
+            **params
+        ),
+        "google": lambda creds, params: GoogleSearchProvider(
+            creds.get("GOOGLE_API_KEY"),
+            creds.get("GOOGLE_CX"),
             **params
         ),
         "oxylabs_google": lambda creds, params: OxylabsSearchProvider(

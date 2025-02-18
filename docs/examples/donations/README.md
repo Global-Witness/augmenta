@@ -155,7 +155,7 @@ directory:
 
 ## Running the augmentation
 
-Make sure you have `augmenta` [installed](.\README.md), open the
+Make sure you have `augmenta` [installed](https://github.com/Global-Witness/augmenta/tree/main?tab=readme-ov-file#installation), open the
 terminal and navigate to the directory where you saved the data,
 configuration file and API keys.
 
@@ -186,6 +186,7 @@ read_csv("data/donations_classified.csv") |>
     ℹ Use `spec()` to retrieve the full column specification for this data.
     ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
+
 | RegulatedEntityName | DonorName | Value | industry | explanation | confidence |
 |----|----|----|----|----|----|
 | Labour Party | Labour Together Limited | 53824.20 | NGO or think-tank | Labour Together Limited operates as a think tank closely associated with the Labour Party in the UK. It was founded in 2015 to support Labour’s electoral strategies and contribute to policy development. Labour Together aims to provide innovative ideas and public policy research aligned with the Labour Party’s objectives, enhancing its electability. This is supported by various documents indicating their projects, reports, and their role in internal party dynamics as a means to significantly influence Labour’s political strategies. As such, its classification primarily aligns with the ‘NGO or think-tank’ category. More about Labour Together can be found on their official website <a href="https://www.labourtogether.uk/">Labour Together</a>. | 9 |
@@ -215,11 +216,12 @@ University of Georgia professor surfaced by the search engine and
 classified by the LLM. This doesn’t stop the LLM from offering a high
 degree of confidence in its classification.
 
-We can work around these limitations in a few ways: - Increase the
-number of results to get a better picture of the donor. - Use a better
-search engine and/or more specific search query. - Be more descriptive
-about these edge cases in the prompt and examples. - Filter out
-individual donors and stick to organisations.
+We can work around these limitations in a few ways:
+
+- Increase the number of results to get a better picture of the donor.
+- Use a better search engine and/or more specific search query.
+- Be more descriptive about these edge cases in the prompt and examples.
+- Filter out individual donors and stick to organisations.
 
 For organisations, which tend to be easier to identify, the model does a
 much better job.
