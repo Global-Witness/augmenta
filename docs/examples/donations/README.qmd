@@ -47,7 +47,7 @@ Now that we have our data, we can use Augmenta to enrich it with additional info
 
 ## Setup
 
-First, we need to configure our project. Create a new file called `config.yaml` and add the following:
+First, we need to configure our project. Create a new directory for you project. In it, create a file called `config.yaml` and paste this into it:
 
 ```yaml
 input_csv: data/donations.csv
@@ -155,12 +155,8 @@ augmenta config.yaml
 This should take a few seconds. Once it's done, you'll have a new file called `data/donations_classified.csv` with the augmented data.
 
 ```{r}
-library(gt)
-
 read_csv("data/donations_classified.csv") |>
-  select(-DonorStatus, -CompanyRegistrationNumber) |>
-  gt() |>
-  fmt_markdown(columns = "explanation")
+  select(-DonorStatus, -CompanyRegistrationNumber)
 ```
 
 ## Results
