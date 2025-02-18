@@ -155,8 +155,12 @@ augmenta config.yaml
 This should take a few seconds. Once it's done, you'll have a new file called `data/donations_classified.csv` with the augmented data.
 
 ```{r}
+library(gt)
+
 read_csv("data/donations_classified.csv") |>
-  select(-DonorStatus, -CompanyRegistrationNumber)
+  select(-DonorStatus, -CompanyRegistrationNumber) |>
+  gt() |>
+  fmt_markdown(columns = "explanation")
 ```
 
 ## Results
