@@ -34,6 +34,9 @@ pip install git+https://github.com/Global-Witness/augmenta.git
 
 ## Usage
 
+> [!TIP]
+> If you would rather follow an example, [go here](/docs/examples/donations/README.md).
+
 Create a new directory for your project and copy the data you want processed into it. Augmenta currently supports CSV files in a [tidy format](https://research-hub.auckland.ac.nz/managing-research-data/organising-and-describing-data/tidy-data).
 
 ### Configuration file

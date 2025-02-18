@@ -16,10 +16,9 @@ such as which industries are more likely to donate to which parties.
 
 ``` r
 library(tidyverse)
-library(gt)
 ```
 
-First, let’s download the data.
+First, let’s download and read the data.
 
 ``` r
 donations_raw <- read_csv("https://search.electoralcommission.org.uk/api/csv/Donations?start={start}&rows=100&query=&sort=AcceptedDate&order=desc&et=pp&date=Accepted&from=2024-07-01&to=2024-09-30&rptPd=&prePoll=false&postPoll=true&register=ni&register=gb&isIrishSourceYes=true&isIrishSourceNo=true&includeOutsideSection75=true")
@@ -27,7 +26,7 @@ donations_raw <- read_csv("https://search.electoralcommission.org.uk/api/csv/Don
 
 For the purposes of this example, we’ll only keep the columns that
 contain information about the donor. We’ll also only look at the first
-50 rows to keep things simple.
+10 rows to keep things simple.
 
 ``` r
 donations <- donations_raw |>
@@ -39,9 +38,6 @@ donations <- donations_raw |>
   summarise(Value = sum(Value)) |>
   ungroup()
 ```
-
-    `summarise()` has grouped output by 'RegulatedEntityName', 'DonorName',
-    'DonorStatus'. You can override using the `.groups` argument.
 
 Finally, let’s save this data as a CSV file.
 
@@ -64,13 +60,13 @@ input_csv: data/donations.csv
 output_csv: data/donations_classified.csv
 model:
   name: openai/gpt-4o-mini
-  # rate_limit: 1
   max_tokens: 20000
 query_col: DonorName
 search:
   engine: brave
+  country: GB
   results: 10
-  rate_limit: 1.5
+  rate_limit: 2
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
@@ -112,12 +108,8 @@ structure:
     type: str
     description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
   confidence:
-    type: str
-    description: Your confidence level in the decision. If you don't have enough information or the documents refer to different organisations that may share a name, please set this to "not confident".
-    options:
-      - very confident
-      - somewhat confident
-      - not confident
+    type: int
+    description: Your confidence level in the decision, on a scale of 1 (lowest) to 10 (highest). If you don't have enough information or the documents refer to different organisations that may share a name, please set this to 1.
 examples:
   - input: "Charles A Daniel-Hobbs"
     output:
@@ -126,13 +118,13 @@ examples:
         According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
         
         A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
-      confidence: somewhat confident
+      confidence: 2
   - input: "Unite the Union"
     output:
       industry: Trade union
       explanation: |
         Unite is [one of the two largest trade unions in the UK](https://en.wikipedia.org/wiki/Unite_the_Union), with over 1.2 million members. It represents various industries, such as construction, manufacturing, transport, logistics and other sectors.
-      confidence: very confident
+      confidence: 7
   - input: "Google UK Limited"
     output:
       industry: Information and communication
@@ -140,31 +132,31 @@ examples:
         Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
 
         The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
-      confidence: very confident
+      confidence: 10
 ```
 
-A few things to note about this configuration:
+A few things to note about the configuration:
 
-- We’re using Brave due to its generous free API tier, but Google will
-  probably work better.
-- Because our dataset is US-centric, we’re setting the country to “GB”
+- We’re using Brave due to its generous free API tier, but Google search
+  results are generally more accurate.
+- Because our dataset is UK-centric, we’re setting the country to “GB”
   in Brave. This should help to filter some of the irrelevant results.
 - The industries are based on the [Standard Industrial
   Classification](https://resources.companieshouse.gov.uk/sic/) groups.
   You can probably come up with something more clever.
 
-Because we want to use Brave and GPT-4o-mini, we need access keys for
-both services. Save them to a file called `.env`:
+Because we’re using Brave and an OpenAI model, we need API keys for both
+services. Save them to a file called `.env` in the root of your project
+directory:
 
     BRAVE_API_KEY=YOUR_KEY_GOES_HERE
     OPENAI_API_KEY=YOUR_KEY_GOES_HERE
 
 ## Running the augmentation
 
-Make sure you have `augmenta`
-[installed](https://github.com/Global-Witness/augmenta/?tab=readme-ov-file#installation),
-open the terminal and navigate to the directory where you saved the
-data, configuration file and API keys.
+Make sure you have `augmenta` [installed](.\README.md), open the
+terminal and navigate to the directory where you saved the data,
+configuration file and API keys.
 
 Run the following command to start the classification.
 
@@ -172,39 +164,41 @@ Run the following command to start the classification.
 augmenta config.yaml
 ```
 
-This should take a few minutes. Once it’s done, you should see a new
-file called `data/donations_classified.csv` with the augmented data.
+This should take a few seconds. Once it’s done, you’ll have a new file
+called `data/donations_classified.csv` with the augmented data.
 
 ``` r
+library(gt)
+
 read_csv("data/donations_classified.csv") |>
   select(-DonorStatus, -CompanyRegistrationNumber) |>
   gt() |>
-  fmt_markdown(columns = c(explanation))
+  fmt_markdown(columns = "explanation")
 ```
 
     Rows: 9 Columns: 8
     ── Column specification ────────────────────────────────────────────────────────
     Delimiter: ","
-    chr (6): RegulatedEntityName, DonorName, DonorStatus, industry, explanation,...
-    dbl (2): CompanyRegistrationNumber, Value
+    chr (5): RegulatedEntityName, DonorName, DonorStatus, industry, explanation
+    dbl (3): CompanyRegistrationNumber, Value, confidence
 
     ℹ Use `spec()` to retrieve the full column specification for this data.
     ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
-<div id="nqqnotdqwb" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#nqqnotdqwb table {
+<div id="nsnmwgaeyl" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#nsnmwgaeyl table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-&#10;#nqqnotdqwb thead, #nqqnotdqwb tbody, #nqqnotdqwb tfoot, #nqqnotdqwb tr, #nqqnotdqwb td, #nqqnotdqwb th {
+&#10;#nsnmwgaeyl thead, #nsnmwgaeyl tbody, #nsnmwgaeyl tfoot, #nsnmwgaeyl tr, #nsnmwgaeyl td, #nsnmwgaeyl th {
   border-style: none;
 }
-&#10;#nqqnotdqwb p {
+&#10;#nsnmwgaeyl p {
   margin: 0;
   padding: 0;
 }
-&#10;#nqqnotdqwb .gt_table {
+&#10;#nsnmwgaeyl .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -229,11 +223,11 @@ read_csv("data/donations_classified.csv") |>
   border-left-width: 2px;
   border-left-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_caption {
+&#10;#nsnmwgaeyl .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
-&#10;#nqqnotdqwb .gt_title {
+&#10;#nsnmwgaeyl .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -244,7 +238,7 @@ read_csv("data/donations_classified.csv") |>
   border-bottom-color: #FFFFFF;
   border-bottom-width: 0;
 }
-&#10;#nqqnotdqwb .gt_subtitle {
+&#10;#nsnmwgaeyl .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -255,7 +249,7 @@ read_csv("data/donations_classified.csv") |>
   border-top-color: #FFFFFF;
   border-top-width: 0;
 }
-&#10;#nqqnotdqwb .gt_heading {
+&#10;#nsnmwgaeyl .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -266,12 +260,12 @@ read_csv("data/donations_classified.csv") |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_bottom_border {
+&#10;#nsnmwgaeyl .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_col_headings {
+&#10;#nsnmwgaeyl .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -285,7 +279,7 @@ read_csv("data/donations_classified.csv") |>
   border-right-width: 1px;
   border-right-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_col_heading {
+&#10;#nsnmwgaeyl .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -304,7 +298,7 @@ read_csv("data/donations_classified.csv") |>
   padding-right: 5px;
   overflow-x: hidden;
 }
-&#10;#nqqnotdqwb .gt_column_spanner_outer {
+&#10;#nsnmwgaeyl .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -315,13 +309,13 @@ read_csv("data/donations_classified.csv") |>
   padding-left: 4px;
   padding-right: 4px;
 }
-&#10;#nqqnotdqwb .gt_column_spanner_outer:first-child {
+&#10;#nsnmwgaeyl .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
-&#10;#nqqnotdqwb .gt_column_spanner_outer:last-child {
+&#10;#nsnmwgaeyl .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
-&#10;#nqqnotdqwb .gt_column_spanner {
+&#10;#nsnmwgaeyl .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -332,10 +326,10 @@ read_csv("data/donations_classified.csv") |>
   display: inline-block;
   width: 100%;
 }
-&#10;#nqqnotdqwb .gt_spanner_row {
+&#10;#nsnmwgaeyl .gt_spanner_row {
   border-bottom-style: hidden;
 }
-&#10;#nqqnotdqwb .gt_group_heading {
+&#10;#nsnmwgaeyl .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -360,7 +354,7 @@ read_csv("data/donations_classified.csv") |>
   vertical-align: middle;
   text-align: left;
 }
-&#10;#nqqnotdqwb .gt_empty_group_heading {
+&#10;#nsnmwgaeyl .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -374,13 +368,13 @@ read_csv("data/donations_classified.csv") |>
   border-bottom-color: #D3D3D3;
   vertical-align: middle;
 }
-&#10;#nqqnotdqwb .gt_from_md > :first-child {
+&#10;#nsnmwgaeyl .gt_from_md > :first-child {
   margin-top: 0;
 }
-&#10;#nqqnotdqwb .gt_from_md > :last-child {
+&#10;#nsnmwgaeyl .gt_from_md > :last-child {
   margin-bottom: 0;
 }
-&#10;#nqqnotdqwb .gt_row {
+&#10;#nsnmwgaeyl .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -398,7 +392,7 @@ read_csv("data/donations_classified.csv") |>
   vertical-align: middle;
   overflow-x: hidden;
 }
-&#10;#nqqnotdqwb .gt_stub {
+&#10;#nsnmwgaeyl .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -410,7 +404,7 @@ read_csv("data/donations_classified.csv") |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#nqqnotdqwb .gt_stub_row_group {
+&#10;#nsnmwgaeyl .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -423,13 +417,13 @@ read_csv("data/donations_classified.csv") |>
   padding-right: 5px;
   vertical-align: top;
 }
-&#10;#nqqnotdqwb .gt_row_group_first td {
+&#10;#nsnmwgaeyl .gt_row_group_first td {
   border-top-width: 2px;
 }
-&#10;#nqqnotdqwb .gt_row_group_first th {
+&#10;#nsnmwgaeyl .gt_row_group_first th {
   border-top-width: 2px;
 }
-&#10;#nqqnotdqwb .gt_summary_row {
+&#10;#nsnmwgaeyl .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -438,14 +432,14 @@ read_csv("data/donations_classified.csv") |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#nqqnotdqwb .gt_first_summary_row {
+&#10;#nsnmwgaeyl .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_first_summary_row.thick {
+&#10;#nsnmwgaeyl .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
-&#10;#nqqnotdqwb .gt_last_summary_row {
+&#10;#nsnmwgaeyl .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -454,7 +448,7 @@ read_csv("data/donations_classified.csv") |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_grand_summary_row {
+&#10;#nsnmwgaeyl .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -463,7 +457,7 @@ read_csv("data/donations_classified.csv") |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#nqqnotdqwb .gt_first_grand_summary_row {
+&#10;#nsnmwgaeyl .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -472,7 +466,7 @@ read_csv("data/donations_classified.csv") |>
   border-top-width: 6px;
   border-top-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_last_grand_summary_row_top {
+&#10;#nsnmwgaeyl .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -481,10 +475,10 @@ read_csv("data/donations_classified.csv") |>
   border-bottom-width: 6px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_striped {
+&#10;#nsnmwgaeyl .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
-&#10;#nqqnotdqwb .gt_table_body {
+&#10;#nsnmwgaeyl .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -492,7 +486,7 @@ read_csv("data/donations_classified.csv") |>
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_footnotes {
+&#10;#nsnmwgaeyl .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -505,7 +499,7 @@ read_csv("data/donations_classified.csv") |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_footnote {
+&#10;#nsnmwgaeyl .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -513,7 +507,7 @@ read_csv("data/donations_classified.csv") |>
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#nqqnotdqwb .gt_sourcenotes {
+&#10;#nsnmwgaeyl .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -526,78 +520,105 @@ read_csv("data/donations_classified.csv") |>
   border-right-width: 2px;
   border-right-color: #D3D3D3;
 }
-&#10;#nqqnotdqwb .gt_sourcenote {
+&#10;#nsnmwgaeyl .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
   padding-left: 5px;
   padding-right: 5px;
 }
-&#10;#nqqnotdqwb .gt_left {
+&#10;#nsnmwgaeyl .gt_left {
   text-align: left;
 }
-&#10;#nqqnotdqwb .gt_center {
+&#10;#nsnmwgaeyl .gt_center {
   text-align: center;
 }
-&#10;#nqqnotdqwb .gt_right {
+&#10;#nsnmwgaeyl .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-&#10;#nqqnotdqwb .gt_font_normal {
+&#10;#nsnmwgaeyl .gt_font_normal {
   font-weight: normal;
 }
-&#10;#nqqnotdqwb .gt_font_bold {
+&#10;#nsnmwgaeyl .gt_font_bold {
   font-weight: bold;
 }
-&#10;#nqqnotdqwb .gt_font_italic {
+&#10;#nsnmwgaeyl .gt_font_italic {
   font-style: italic;
 }
-&#10;#nqqnotdqwb .gt_super {
+&#10;#nsnmwgaeyl .gt_super {
   font-size: 65%;
 }
-&#10;#nqqnotdqwb .gt_footnote_marks {
+&#10;#nsnmwgaeyl .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
-&#10;#nqqnotdqwb .gt_asterisk {
+&#10;#nsnmwgaeyl .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
-&#10;#nqqnotdqwb .gt_indent_1 {
+&#10;#nsnmwgaeyl .gt_indent_1 {
   text-indent: 5px;
 }
-&#10;#nqqnotdqwb .gt_indent_2 {
+&#10;#nsnmwgaeyl .gt_indent_2 {
   text-indent: 10px;
 }
-&#10;#nqqnotdqwb .gt_indent_3 {
+&#10;#nsnmwgaeyl .gt_indent_3 {
   text-indent: 15px;
 }
-&#10;#nqqnotdqwb .gt_indent_4 {
+&#10;#nsnmwgaeyl .gt_indent_4 {
   text-indent: 20px;
 }
-&#10;#nqqnotdqwb .gt_indent_5 {
+&#10;#nsnmwgaeyl .gt_indent_5 {
   text-indent: 25px;
 }
-&#10;#nqqnotdqwb .katex-display {
+&#10;#nsnmwgaeyl .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
-&#10;#nqqnotdqwb div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+&#10;#nsnmwgaeyl div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
 
 | RegulatedEntityName | DonorName | Value | industry | explanation | confidence |
 |----|----|----|----|----|----|
-| Labour Party | Labour Together Limited | 53824.20 | NGO or think-tank | Labour Together Limited is a British think tank closely associated with the Labour Party. Founded in June 2015, it has played a significant role in shaping political policy and public opinion regarding Labour Party strategies. The organization has hybrid functions, including policy analysis, advocacy for Labour’s political agenda, and efforts to unify various factions within the party, making it comparable to other influential think tanks in the UK political landscape. Its recent activities include publishing reports on political strategies and engaging in electoral assessments, highlighting its role in policy debates and promoting Labour’s electoral success. More details can be found on their official site <a href="https://www.labourtogether.uk/">Labour Together</a>. | very confident |
-| Labour Party | The Good Faith Partnership LLP | 15660.00 | Professional, scientific and technical activities | The Good Faith Partnership LLP operates as a social consultancy, addressing complex societal challenges through collaboration among various sectors including government, businesses, charities, and faith-based organizations. Their focus on public policy, public affairs, and strategic initiatives aligns closely with the Professional, scientific and technical activities industry. Moreover, they position themselves as a bridge connecting political, civil society, and faith sectors to foster common initiatives and solutions, indicating a strong engagement within the realm of professional consultancy services. For more information on their work, you can visit their <a href="https://goodfaith.org.uk/">website</a>. | very confident |
-| Liberal Democrats | JOHN HEMMING TRADING LIMITED | 1000.00 | Arts, entertainment and recreation | According to the documents, JOHN HEMMING TRADING LIMITED has a registered business nature of ‘Operation of arts facilities’ (SIC Code 90040). This categorically places the company within the arts and entertainment sector, focusing on facilities that likely host events such as performances, exhibitions, or other art-related activities. The company has been active since its incorporation on 3 August 2011 and is based in Birmingham, West Midlands. Additionally, other documents related to John Hemming, the owner of this company, hint at a diverse background including membership in arts-related unions, but the primary classification remains in the arts industry. | very confident |
-| Liberal Democrats | Patricia Bell | 2790.00 | Education | Patricia Bell is a prominent figure in the field of women’s studies and black feminism, serving as a professor emerita at the University of Georgia. Her extensive background includes being a co-founder of the National Women’s Studies Association and contributing to various educational programs and journals related to women’s issues. She has authored multiple influential books that have been recognized in the academic community, such as <em>The Firebrand and the First Lady</em>, which relate to social justice and women’s studies. Her position in academia and her contributions to education and scholarship clearly align her with the ‘Education’ industry. | very confident |
-| Liberal Democrats | Robert H Miall | 2500.00 | Arts, entertainment and recreation | Robert H Miall is primarily known as a writer, with notable works including titles related to science fiction such as ‘UFO-1: The Flesh Hunters’ and ‘The Protectors.’ According to sources, including <a href="https://www.goodreads.com/author/show/1235956.Robert_Miall">Goodreads</a>, he was active in publishing through the 1970s and has a body of work that includes several books. His profession and contributions align closely with the Arts and Entertainment sector, specifically literature and recreation activities. | very confident |
-| Liberal Democrats | Scottish Parliament. | 4376.10 | Public administration and defence; compulsory social security | The Scottish Parliament is the unicameral legislature responsible for representing the citizens of Scotland and for making laws affecting various areas within Scotland’s legislative competence. It was established following a referendum in 1997 and has the power to legislate on numerous devolved issues as defined by the Scotland Act 1998. The Parliament operates within the framework of the UK’s political structure and holds significant roles in public governance, making it part of the public administration industry. You can find more detailed information on its functions and legislative powers at the official <a href="https://www.parliament.scot/">Scottish Parliament website</a>. | very confident |
-| Liberal Democrats | Stephen F Gosling | 2500.00 | Arts, entertainment and recreation | Stephen F. Gosling is identified as a professional pianist, well-known for his performances in the contemporary music scene across various regions, including the U.S. and Europe. His significant contributions include performances with well-respected ensembles and orchestras, highlighting his role as a musical artist. Notably, he has received acclaim in reviews from sources like The New York Times and Washington Post, which emphasize his artistic skills and contributions to music. Additionally, the various performances and collaborations he is involved in falls under the arts industry. This classification aligns with his engagement and reputation in the contemporary music scene, making it clear that he is tied to the ‘Arts, entertainment and recreation’ industry. Here’s more on his background: <a href="https://www.newyorker.com/goings-on-about-town/classical-music/stephen-gosling">New Yorker</a> describes his strength and appeal as a pianist. | very confident |
-| Liberal Democrats | Wirral Liberal Club | 127709.80 | Accommodation and food service activities | The Wirral Liberal Club was previously classified as a pub and operated under a full pub license. Despite its closure in April 2019, it held a license and was involved in hospitality services, which places it under the accommodation and food service activities industry. According to <a href="https://www1.camra.org.uk/pubs/wirral-liberal-club-oxton-132116">CAMRA</a>, the club is located in a converted house and operated as a pub until its closure. While it is not currently operational, its historical function aligns with this classification. | very confident |
-| Ulster Unionist Party | Northern Ireland Assembly | 7069.03 | Public administration and defence; compulsory social security | The Northern Ireland Assembly is a devolved legislature responsible for making laws on various local matters including housing, health, education, and agriculture, among others. It is the official body for governance in Northern Ireland, created as part of the Good Friday Agreement to facilitate power-sharing between different political groups. As a legislative body, it is primarily associated with public administration and governance rather than any specific traditional industry. This classification aligns with the Assembly’s role in overseeing government departments and granting democratic representation to the Northern Irish public. For more details, you can visit the official website of the <a href="https://www.niassembly.gov.uk/">Northern Ireland Assembly</a> for further insights into its duties and operations. | very confident |
+| Labour Party | Labour Together Limited | 53824.20 | NGO or think-tank | Labour Together Limited operates as a think tank closely associated with the Labour Party in the UK. It was founded in 2015 to support Labour’s electoral strategies and contribute to policy development. Labour Together aims to provide innovative ideas and public policy research aligned with the Labour Party’s objectives, enhancing its electability. This is supported by various documents indicating their projects, reports, and their role in internal party dynamics as a means to significantly influence Labour’s political strategies. As such, its classification primarily aligns with the ‘NGO or think-tank’ category. More about Labour Together can be found on their official website <a href="https://www.labourtogether.uk/">Labour Together</a>. | 9 |
+| Labour Party | The Good Faith Partnership LLP | 15660.00 | Professional, scientific and technical activities | The Good Faith Partnership LLP operates as a social consultancy, working to connect businesses, governments, charities, and communities to tackle societal issues through collaboration. Their work involves engaging with a diverse set of stakeholders including political leaders and community representatives to bring about meaningful change. They are involved in public affairs, public policy, and strategic initiatives, as indicated on their website <a href="https://goodfaith.org.uk">Good Faith Partnership</a>. Their focus on cross-sector initiatives aligns with the Professional, scientific and technical activities category, as they emphasize the importance of strategic communication and collaboration which are hallmarks of a consultancy firm. | 8 |
+| Liberal Democrats | JOHN HEMMING TRADING LIMITED | 1000.00 | Arts, entertainment and recreation | JOHN HEMMING TRADING LIMITED is classified under the SIC code 90040, which pertains to the operation of arts facilities. The company is described as an active private limited company incorporated in 2011 and is based in Birmingham. The nature of the business indicates involvement in the arts sector, specifically in managing or operating facilities related to arts activities. This classification aligns with the information available from reliable sources such as Companies House and other business directories. Therefore, the industry associated with this company is clearly in the arts and recreation sector. | 9 |
+| Liberal Democrats | Patricia Bell | 2790.00 | Professional, scientific and technical activities | Patricia Bell is an individual who holds multiple professional roles and has been involved in significant community and advisory capacities. She is currently identified as the Cabinet Member for Adult Care and has several committee appointments related to health and wellbeing, indicating her active engagement in public administration pertaining to health services. Additionally, she is a strong advocate in various health and social work committees aimed at improving community care and support. These responsibilities position her within the professional domain related to public service and healthcare. For more detailed information about her current roles, you can refer to <a href="https://westmorlandandfurness.moderngov.co.uk/mgUserInfo.aspx?UID=169">Westmorland and Furness Council</a>. | 8 |
+| Liberal Democrats | Robert H Miall | 2500.00 | Arts, entertainment and recreation | Robert H Miall is primarily a writer, known for his works in science fiction and television tie-ins, as indicated by his publications such as ‘UFO’ and others that relate closely to the entertainment sector. His works have gained some recognition in literary databases and are available on platforms like Goodreads and Amazon, which categorize him as an author, emphasizing his contributions to literature and entertainment. Miall’s background suggests that he worked within the realm of the arts, particularly in writing for television series and book adaptations, aligning him with the industry of arts, entertainment, and recreation. | 8 |
+| Liberal Democrats | Scottish Parliament. | 4376.10 | Public administration and defence; compulsory social security | The Scottish Parliament is the unicameral legislature of Scotland, which is responsible for law-making and overseeing the Scottish government. It operates under a devolved government system established by the Scotland Act 1998, which delegated powers from the UK Parliament to the Parliament of Scotland. The Scottish Parliament handles various powers related to public administration including health, education, justice, and transport. This aligns it with the political and public administration sectors. Its role in representing and legislating for Scottish interests categorizes it firmly within the public sector of governmental activities. More details can be found on the <a href="https://www.parliament.scot/">Scottish Parliament website</a>. | 9 |
+| Liberal Democrats | Stephen F Gosling | 2500.00 | Arts, entertainment and recreation | Stephen F. Gosling is primarily associated with the arts, specifically as a pianist and a performer within the contemporary music scene. His performances span numerous notable venues and festivals across various continents, and he is recognized for his contributions to modern classical music as a member of various ensembles, including the American Modern Ensemble. Publications such as the New York Times and the Washington Post have spotlighted his artistry, demonstrating his significant role in the arts community. This categorization aligns with the information available from distinguished sources like <a href="https://americanmodernensemble.org/stephen-gosling-piano">American Modern Ensemble</a>, which showcases his contributions to contemporary music. | 8 |
+| Liberal Democrats | Wirral Liberal Club | 127709.80 | Accommodation and food service activities | The Wirral Liberal Club was a social club and public house located in Oxton, Merseyside. According to the information provided, it had a full pub license, which indicates that it was involved in serving food and beverages, thus classifying it under the accommodation and food service activities industry. However, the club has long-term closed since April 2019, and its premises underwent a change of use to residential apartments. Although the club itself is no longer operating, it was primarily associated with hospitality services before its closure, making this classification relevant. Sources: <a href="https://whatpub.com/pubs/WIR/333/wirral-liberal-club-oxton">WhatPub</a>, <a href="https://www1.camra.org.uk/pubs/wirral-liberal-club-oxton-132116">CAMRA</a>. | 8 |
+| Ulster Unionist Party | Northern Ireland Assembly | 7069.03 | Public administration and defence; compulsory social security | The Northern Ireland Assembly is a devolved legislature responsible for making laws and scrutinizing the work of ministers and government departments on various transferred matters such as health, education, and agriculture. As the governing body of Northern Ireland, it plays a crucial role in public administration. According to the <a href="https://www.niassembly.gov.uk/">Northern Ireland Assembly’s official website</a>, the assembly has the authority to legislate in a wide range of areas not reserved to the UK Parliament, focusing on local governance and public services. Its nature as a public institution aligns it closely with the public administration sector. | 8 |
 
 </div>
+
+## Results
+
+There are a few things to note here.
+
+First, the results are only as good [as the information they’re
+fed](https://en.wikipedia.org/wiki/Garbage_in%2C_garbage_out). Google
+search results tend to be better than those offered by Brave or
+Duckduckgo, but they’re not perfect either.
+
+This is particularly an issue with individuals with generic names. For
+example, it’s likely that Patricia Bell in the dataset is not the
+University of Georgia professor surfaced by the search engine and
+classified by the LLM. This doesn’t stop the LLM from offering a high
+degree of confidence in its classification.
+
+We can work around these limitations in a few ways: - Increase the
+number of results to get a better picture of the donor. - Use a better
+search engine and/or more specific search query. - Be more descriptive
+about these edge cases in the prompt and examples. - Filter out
+individual donors and stick to organisations.
+
+For organisations, which tend to be easier to identify, the model does a
+much better job.
+
+If we were to publish any analysis of this data, we would need to
+fact-check the results.
