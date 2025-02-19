@@ -4,9 +4,12 @@ import json
 import hashlib
 import asyncio
 import time
+import logging
 from pathlib import Path
 from typing import Dict, Optional, ClassVar, Union
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
     """Generate a deterministic hash of data or file contents."""
@@ -28,6 +31,7 @@ def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
     return hasher.hexdigest()
 
 @dataclass
+@dataclass
 class RateLimiter:
     """Rate limiter for API requests using singleton pattern."""
     rate_limit: Optional[float]
@@ -40,6 +44,7 @@ class RateLimiter:
             instance = super().__new__(cls)
             instance.rate_limit = rate_limit
             cls._instances[rate_limit] = instance
+            logger.debug(f"Created new RateLimiter instance with rate limit: {rate_limit}s")
         return cls._instances[rate_limit]
         
     async def acquire(self) -> None:
@@ -50,8 +55,11 @@ class RateLimiter:
         async with self._lock:
             time_since_last = time.time() - self._last_request_time
             if time_since_last < self.rate_limit:
-                await asyncio.sleep(self.rate_limit - time_since_last)
+                wait_time = self.rate_limit - time_since_last
+                logger.info(f"Rate limit hit - waiting {wait_time:.2f}s before next request")
+                await asyncio.sleep(wait_time)
             self._last_request_time = time.time()
+            logger.debug(f"Request permitted at {self._last_request_time}")
 
 class ProgressTracker:
     """Handles progress tracking and display."""

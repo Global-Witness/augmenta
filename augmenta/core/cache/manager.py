@@ -185,6 +185,16 @@ class CacheManager:
         with self.db.get_connection() as conn:
             conn.execute("DELETE FROM processes WHERE last_updated < ?", (cutoff,))
     
+    def close_connections(self) -> None:
+        """Close all database connections."""
+        self.is_running = False
+        if hasattr(self, 'writer_thread'):
+            try:
+                # Wait for writer thread to finish
+                self.writer_thread.join(timeout=5.0)
+            except Exception as e:
+                logger.error(f"Error joining writer thread: {e}")
+    
     def cleanup(self) -> None:
         """Cleanup method called on program exit."""
         self.is_running = False

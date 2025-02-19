@@ -9,7 +9,7 @@ ProviderCreator = Callable[[dict[str, str], Dict[str, Any]], SearchProvider]
 
 class SearchProviderFactory:
     # Reserved keys that shouldn't be passed to the search provider
-    _reserved_keys = {'engine', 'results', 'rate_limit'}
+    _reserved_keys = {'engine', 'results'}
     
     _providers: dict[str, ProviderCreator] = {
         "brave": lambda creds, params: BraveSearchProvider(

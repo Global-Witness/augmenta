@@ -11,8 +11,14 @@ from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
 
+# Default logging
 logging.getLogger().setLevel(logging.WARNING)
+
+# Suppress all Trafilatura-related logging unless critical
 logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
+logging.getLogger('trafilatura.core').setLevel(logging.CRITICAL)
+logging.getLogger('augmenta.core.extractors').setLevel(logging.CRITICAL)
+logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
 
 def get_api_keys(config_data: Dict[str, Any], interactive: bool = False) -> Dict[str, str]:
     """Get required API keys from environment or user input."""
@@ -62,7 +68,15 @@ def main(
 
         if verbose:
             logging.getLogger().setLevel(logging.INFO)
+
+            # Enable Trafilatura logging
+            logging.getLogger('trafilatura').setLevel(logging.INFO)
+            logging.getLogger('trafilatura.core').setLevel(logging.INFO)
+            logging.getLogger('augmenta.core.extractors').setLevel(logging.INFO)
+            logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.INFO)
             click.echo(f"Processing config file: {config_path}")
+        else:
+            logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
 
         with click.progressbar(length=100, label='Processing') as progress:
             def update_progress(current: int, total: int, query: str):

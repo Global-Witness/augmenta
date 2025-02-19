@@ -84,9 +84,26 @@ def apply_cached_results(
     return df
 
 def handle_cache_cleanup(cache_manager: Optional[Any] = None) -> None:
-    """Clean up old cache entries."""
+    """Clean up cache by removing the cache database file."""
     if cache_manager is None:
         cache_manager = CacheManager()
+    
+    try:
+        # Ensure all pending writes are processed
+        cache_manager.cleanup()
         
-    cache_manager.cleanup_old_processes()
-    click.echo("Cache cleaned successfully!")
+        # Get the database path
+        db_path = cache_manager.db_path
+        
+        # Close any existing connections
+        cache_manager.close_connections()
+        
+        # Delete the database file if it exists
+        if db_path.exists():
+            db_path.unlink()
+            click.echo("Cache database deleted successfully!")
+        else:
+            click.echo("No cache database found.")
+            
+    except Exception as e:
+        click.echo(f"Error cleaning cache: {e}", err=True)
