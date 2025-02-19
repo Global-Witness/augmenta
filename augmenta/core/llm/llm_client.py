@@ -5,8 +5,10 @@ import logging
 import yaml
 from pydantic import BaseModel, Field, create_model
 import instructor
+from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
+from instructor.exceptions import InstructorRetryException
 
-# This gets rid of the pesky LLM costs lookup message
+# This gets rid of the LLM costs lookup message
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
 from litellm import Router
@@ -22,17 +24,33 @@ class LLMClient:
         'float': float, 'dict': dict, 'list': list
     }
     
-    def __init__(self, model: str, max_tokens: Optional[int] = None):
+    def __init__(
+        self, 
+        model: str, 
+        max_tokens: Optional[int] = None,
+        max_retries: int = 3,
+        retry_wait_seconds: int = 1,
+        temperature: float = 0.0  # Added temperature parameter with default 0
+    ):
         router = Router(
             model_list=[{
                 "model_name": model,
-                "litellm_params": {"model": model},
+                "litellm_params": {
+                    "model": model,
+                    "temperature": temperature  # Set temperature in litellm params
+                },
             }],
             default_litellm_params={"acompletion": True}
         )
         self.client = instructor.patch(router)
         self.model = model
         self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.retry_config = AsyncRetrying(
+            stop=stop_after_attempt(max_retries),
+            wait=wait_fixed(retry_wait_seconds),
+            reraise=True
+        )
 
     @staticmethod
     @lru_cache(maxsize=32)
@@ -70,7 +88,8 @@ class LLMClient:
         self,
         prompt_system: str,
         prompt_user: str,
-        response_format: Optional[Type[BaseModel]] = None
+        response_format: Optional[Type[BaseModel]] = None,
+        temperature: Optional[float] = None  # Allow overriding temperature per request
     ) -> Union[str, dict[str, Any], BaseModel]:
         """Generates structured or unstructured completion"""
         messages = [
@@ -82,20 +101,32 @@ class LLMClient:
             if self.max_tokens:
                 messages = trim_messages(messages, max_tokens=self.max_tokens, model=self.model)
                 
+            # Use request-specific temperature if provided, otherwise use instance default
+            temp = temperature if temperature is not None else self.temperature
+                
             if response_format is None:
                 response = await self.client.chat.completions.create(
                     model=self.model,
-                    messages=messages
+                    messages=messages,
+                    temperature=temp
                 )
                 return response.choices[0].message.content
             
             result = await self.client.chat.completions.create(
                 model=self.model,
                 response_model=response_format,
-                messages=messages
+                messages=messages,
+                max_retries=self.retry_config,
+                temperature=temp
             )
             
             return result.model_dump()
                 
+        except InstructorRetryException as e:
+            logger.error(
+                f"Validation error after {e.n_attempts} attempts. "
+                f"Last error: {e.messages[-1]['content'] if e.messages else 'Unknown error'}"
+            )
+            raise RuntimeError(f"LLM request failed after {e.n_attempts} retries: {e}")
         except Exception as e:
             raise RuntimeError(f"LLM request failed: {e}")

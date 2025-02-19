@@ -18,6 +18,11 @@ prompt:
     We also know that the donor is a {{DonorStatus}}.
 
     Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.
+
+    # IMPORTANT
+
+    Do NOT include a confidence field for this task. Please only respond with the industry and explanation fields. I repeat, DO NOT return a confidence field, even if you are asked for it.
+    
 structure:
   industry:
     type: str
