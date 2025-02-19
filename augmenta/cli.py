@@ -35,8 +35,8 @@ class ConsolePrinter:
   / /| |/ / / / __ `/ __ `__ \/ _ \/ __ \/ __/ __ `/
  / ___ / /_/ / /_/ / / / / / /  __/ / / / /_/ /_/ / 
 /_/  |_\__,_/\__, /_/ /_/ /_/\___/_/ /_/\__/\__,_/  
-            /____/                                  
-"""
+            /____/                                  """
+        
         # Read version from pyproject.toml
         import os
         package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,7 +49,7 @@ class ConsolePrinter:
                     break
                     
         print(f"{Fore.CYAN}{Style.BRIGHT}{banner}{Style.RESET_ALL}")
-        print(f"{Fore.YELLOW}Version: {version}{Style.RESET_ALL}\n")
+        print(f"{Fore.YELLOW}v. {version}{Style.RESET_ALL}\n")
     
     def update_progress(self, current: int, total: int, query: str):
         self.current_file = query

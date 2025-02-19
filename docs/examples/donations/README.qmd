@@ -65,12 +65,18 @@ prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
     # Instructions
-    The following documents contain information extracted from a web search for "{{DonorName}}". Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, or an individual. In the case of an individual, you should classify them based on their profession or the industry they are closest associated with.
+
+    The following documents are web search results about {{DonorName}}, a {{RegulatedEntityName}} donor identified in data published by the UK Electoral Commission. Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, an individual, etc.
+    
+    If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
 
     We also know that the donor is a {{DonorStatus}}.
 
-    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.    
 structure:
+  chain_of_thought:
+    type: str
+    description: Understand the task and make a complete plan to accomplish it. Explain your reasoning. Then, carry out the plan, think of potential issues that might come up, then show your answer. Assess your own answer, think of ways to improve it, and then show the improved answer.
   industry:
     type: str
     description: What industry is this organisation or person associated with?
@@ -127,6 +133,12 @@ examples:
 
         The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
       confidence: 10
+  - input: "John Smith"
+    output:
+      industry: Don't know
+      explanation: |
+        The documents about John Smith refer to multiple people, so there's no way to accurately assess what industry this particular individual belongs to.
+      confidence: 1
 ```
 
 A few things to note about the configuration:
@@ -134,6 +146,7 @@ A few things to note about the configuration:
 - We're using Brave due to its generous free API tier, but Google search results are generally more accurate.
 - Because our dataset is UK-centric, we're setting the country to "GB" in Brave. This should help to filter some of the irrelevant results.
 - The industries are based on the [Standard Industrial Classification](https://resources.companieshouse.gov.uk/sic/) groups. You can probably come up with something more clever.
+- We are using chain-of-thought to guide the model through the process of classification. This can help improve accuracy.
 
 Because we're using Brave and an OpenAI model, we need API keys for both services. Save them to a file called `.env` in the root of your project directory:
 

@@ -63,3 +63,21 @@ Avoid negative examples. Like humans, LLMs have a "[pink elephant](https://arxiv
 ## Leave room for ambiguity
 
 There will be many cases where the AI won't be able to confidently produce the data you want. Rather than forcing it into a response it might [hallucinate](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), you should offer a way for the AI to say "I don't know".
+
+## Use chain-of-thoguht
+
+[Chain-of-thought](https://www.promptingguide.ai/techniques/cot) is a technique that allows LLMs to reason before responding. It can improve the quality of the output by ~10%.
+
+You can use this technique with Augmenta like this:
+
+```yaml
+structure:
+  chain_of_thought:
+    type: str
+    description: Understand the task and make a complete plan to accomplish it. Explain your reasoning. Then, carry out the plan, think of potential issues that might come up, then show your answer. Assess your own answer, think of ways to improve it, and then show the improved answer.
+  answer:
+    type: str
+    description: What is the answer to the question?
+```
+
+Adapt the text for your specific use case.

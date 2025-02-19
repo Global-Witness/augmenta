@@ -25,17 +25,14 @@ async def search_web(
     if results < 1:
         raise ValueError("Results count must be positive")
         
-    global _rate_limiter
-    if _rate_limiter is None:
-        _rate_limiter = RateLimiter(rate_limit)
-        
     try:
+        # Remove the global rate limiter here - we'll use the provider's one
         provider = SearchProviderFactory.create(engine, credentials, search_config)
-        await _rate_limiter.acquire()
         return await provider.search(query, results)
         
     except Exception as e:
         raise RuntimeError(f"Search failed: {str(e)}") from e
+
 
 __all__ = [
     'search_web',

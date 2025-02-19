@@ -13,8 +13,12 @@ class SearchProvider(ABC):
     def __init__(self, rate_limit: Optional[float] = None, **kwargs):
         """Initialize search provider with common parameters."""
         self.kwargs = kwargs
-        self.rate_limiter = RateLimiter(rate_limit)
-        logger.info(f"Initialized {self.__class__.__name__} with rate limit: {rate_limit}s")
+        # Use provider-specific namespace for rate limiting
+        self.rate_limiter = RateLimiter(
+            rate_limit=rate_limit, 
+            namespace=self.__class__.__name__
+        )
+        logger.debug(f"Initialized {self.__class__.__name__} with rate limit: {rate_limit}s")
 
     @staticmethod
     def _normalize_url(url: str) -> str:
