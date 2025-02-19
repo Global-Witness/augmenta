@@ -6,10 +6,14 @@ import asyncio
 import yaml
 import logging
 from typing import Dict, Any, Optional
+from colorama import Fore, Style, init
 
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
+
+# Initialize colorama
+init()
 
 # Default logging
 logging.getLogger().setLevel(logging.WARNING)
@@ -19,6 +23,38 @@ logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
 logging.getLogger('trafilatura.core').setLevel(logging.CRITICAL)
 logging.getLogger('augmenta.core.extractors').setLevel(logging.CRITICAL)
 logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
+
+class ConsolePrinter:
+    def __init__(self):
+        self.current_file = None
+        
+    def print_banner(self):
+        banner = r"""
+    ___                                    __       
+   /   | __  ______ _____ ___  ___  ____  / /_____ _
+  / /| |/ / / / __ `/ __ `__ \/ _ \/ __ \/ __/ __ `/
+ / ___ / /_/ / /_/ / / / / / /  __/ / / / /_/ /_/ / 
+/_/  |_\__,_/\__, /_/ /_/ /_/\___/_/ /_/\__/\__,_/  
+            /____/                                  
+"""
+        # Read version from pyproject.toml
+        import os
+        package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        pyproject_path = os.path.join(package_dir, 'pyproject.toml')
+        
+        with open(pyproject_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith('version'):
+                    version = line.split('=')[1].strip().strip('"').strip("'")
+                    break
+                    
+        print(f"{Fore.CYAN}{Style.BRIGHT}{banner}{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}Version: {version}{Style.RESET_ALL}\n")
+    
+    def update_progress(self, current: int, total: int, query: str):
+        self.current_file = query
+        # Move cursor up one line and clear the line
+        print(f"\033[A\033[K{Fore.CYAN}Processing: {Style.BRIGHT}{query}{Style.RESET_ALL}")
 
 def get_api_keys(config_data: Dict[str, Any], interactive: bool = False) -> Dict[str, str]:
     """Get required API keys from environment or user input."""
@@ -53,6 +89,9 @@ def main(
 ) -> None:
     """Augmenta CLI tool for processing data using LLMs."""
     try:
+        console = ConsolePrinter()
+        console.print_banner()
+
         if clean_cache:
             handle_cache_cleanup()
             return
@@ -68,7 +107,6 @@ def main(
 
         if verbose:
             logging.getLogger().setLevel(logging.INFO)
-
             # Enable Trafilatura logging
             logging.getLogger('trafilatura').setLevel(logging.INFO)
             logging.getLogger('trafilatura.core').setLevel(logging.INFO)
@@ -78,9 +116,21 @@ def main(
         else:
             logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
 
-        with click.progressbar(length=100, label='Processing') as progress:
+        # Print an initial empty line for the processing status
+        print(f"{Fore.CYAN}Processing: Starting...{Style.RESET_ALL}")
+            
+        with click.progressbar(
+            length=100,
+            label=f'{Fore.GREEN}Progress{Style.RESET_ALL}',
+            fill_char='█',
+            empty_char='░',
+            show_percent=True,
+            show_eta=True,
+            item_show_func=lambda _: None  # Prevents showing item count
+        ) as progress:
             def update_progress(current: int, total: int, query: str):
                 progress.update(round((current / total * 100) - progress.pos))
+                console.update_progress(current, total, query)
                 
             _, process_id = asyncio.run(process_augmenta(
                 config_path,
@@ -91,8 +141,8 @@ def main(
             ))
 
         if verbose and process_id:
-            click.echo(f"\nProcess completed successfully! ID: {process_id}")
+            click.echo(f"\n{Fore.GREEN}Process completed successfully! ID: {Style.BRIGHT}{process_id}{Style.RESET_ALL}")
             
     except Exception as e:
-        click.echo(f"Error: {str(e)}", err=True)
+        click.echo(f"{Fore.RED}Error: {str(e)}{Style.RESET_ALL}", err=True)
         raise click.Abort()
