@@ -15,14 +15,67 @@ from augmenta.core.config.credentials import CredentialsManager
 # Initialize colorama
 init()
 
-# Default logging
-logging.getLogger().setLevel(logging.WARNING)
+class ScrapeFilter(logging.Filter):
+    """Filter out common scraping-related errors unless in verbose mode."""
+    
+    FILTERED_MESSAGES = [
+        'net::ERR_ABORTED',
+        'Target page, context or browser has been closed',
+        'TimeoutError',
+        'Navigation timeout',
+        'net::ERR_CONNECTION_TIMED_OUT',
+        'net::ERR_CONNECTION_REFUSED',
+        'Playwright timeout',
+        'Target closed',
+        'ERR_NAME_NOT_RESOLVED',
+    ]
+    
+    def __init__(self, verbose: bool = False):
+        super().__init__()
+        self.verbose = verbose
+    
+    def filter(self, record: logging.LogRecord) -> bool:
+        if self.verbose:
+            return True
+        
+        # Check if message contains any of the filtered phrases
+        return not any(msg in str(record.msg) for msg in self.FILTERED_MESSAGES)
 
-# Suppress all Trafilatura-related logging unless critical
-logging.getLogger('trafilatura').setLevel(logging.CRITICAL)
-logging.getLogger('trafilatura.core').setLevel(logging.CRITICAL)
-logging.getLogger('augmenta.core.extractors').setLevel(logging.CRITICAL)
-logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
+def configure_logging(verbose: bool = False):
+    """Configure logging based on verbosity level."""
+    # Create handlers
+    console_handler = logging.StreamHandler()
+    console_handler.addFilter(ScrapeFilter(verbose))
+    
+    # Set format
+    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+    console_handler.setFormatter(formatter)
+    
+    # Configure root logger
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO if verbose else logging.WARNING)
+    
+    # Remove existing handlers and add our configured one
+    root_logger.handlers.clear()
+    root_logger.addHandler(console_handler)
+    
+    # Configure specific loggers
+    loggers = [
+        'trafilatura',
+        'trafilatura.core',
+        'augmenta.core.extractors',
+        'augmenta.core.extractors.trafilatura',
+        'playwright._impl._api_types',
+        'playwright._impl.connection',
+    ]
+    
+    for logger_name in loggers:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.INFO if verbose else logging.CRITICAL)
+        # Prevent log propagation to avoid duplicate messages
+        logger.propagate = False
+        logger.handlers.clear()
+        logger.addHandler(console_handler)
 
 class ConsolePrinter:
     def __init__(self):
@@ -91,6 +144,9 @@ def main(
     try:
         console = ConsolePrinter()
         console.print_banner()
+        
+        # Configure logging based on verbosity
+        configure_logging(verbose)
 
         if clean_cache:
             handle_cache_cleanup()
@@ -106,15 +162,7 @@ def main(
             get_api_keys(config_data, interactive=True)
 
         if verbose:
-            logging.getLogger().setLevel(logging.INFO)
-            # Enable Trafilatura logging
-            logging.getLogger('trafilatura').setLevel(logging.INFO)
-            logging.getLogger('trafilatura.core').setLevel(logging.INFO)
-            logging.getLogger('augmenta.core.extractors').setLevel(logging.INFO)
-            logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.INFO)
             click.echo(f"Processing config file: {config_path}")
-        else:
-            logging.getLogger('augmenta.core.extractors.trafilatura').setLevel(logging.CRITICAL)
 
         # Print an initial empty line for the processing status
         print(f"{Fore.CYAN}Processing: Starting...{Style.RESET_ALL}")
@@ -126,7 +174,7 @@ def main(
             empty_char='░',
             show_percent=True,
             show_eta=True,
-            item_show_func=lambda _: None  # Prevents showing item count
+            item_show_func=lambda _: None
         ) as progress:
             def update_progress(current: int, total: int, query: str):
                 progress.update(round((current / total * 100) - progress.pos))

@@ -144,9 +144,9 @@ examples:
 A few things to note about the configuration:
 
 - We're using Brave due to its generous free API tier, but Google search results are generally more accurate.
-- Because our dataset is UK-centric, we're setting the country to "GB" in Brave. This should help to filter some of the irrelevant results.
+- Because our dataset is UK-centric, we're setting the country to "GB" in Brave. This should help filter out some of the irrelevant results.
 - The industries are based on the [Standard Industrial Classification](https://resources.companieshouse.gov.uk/sic/) groups. You can probably come up with something more clever.
-- We are using chain-of-thought to guide the model through the process of classification. This can help improve accuracy.
+- We are using [chain-of-thought](https://github.com/Global-Witness/augmenta/blob/main/docs/prompt.md#use-chain-of-thoguht) to guide the model through the process of classification. This can help improve accuracy.
 
 Because we're using Brave and an OpenAI model, we need API keys for both services. Save them to a file called `.env` in the root of your project directory:
 
@@ -171,7 +171,7 @@ This should take a few seconds. Once it's done, you'll have a new file called `d
 library(gt)
 
 read_csv("data/donations_classified.csv") |>
-  select(-DonorStatus, -CompanyRegistrationNumber) |>
+  select(-DonorStatus, -CompanyRegistrationNumber, -chain_of_thought) |>
   gt() |>
   fmt_markdown(columns = "explanation")
 ```
@@ -182,7 +182,9 @@ There are a few things to note here.
 
 First, the results are only as good [as the information they're fed](https://en.wikipedia.org/wiki/Garbage_in%2C_garbage_out). Google search results tend to be better than those offered by Brave or Duckduckgo, but they're not perfect either.
 
-This is particularly an issue with individuals with generic names. For example, it's likely that Patricia Bell in the dataset is not the University of Georgia professor surfaced by the search engine and classified by the LLM. This doesn't stop the LLM from offering a high degree of confidence in its classification.
+This is particularly an issue with individuals with generic names. We have instructed the model to flag those cases as "Don't know", but it can still lead to some issues.
+
+For example, the "Robert H Miall" identified in the search results has passed away in 2011 (as noted by the LLM itself), so he can't be the donor we're looking for (the donations are from 2024).
 
 We can work around these limitations in a few ways:
 

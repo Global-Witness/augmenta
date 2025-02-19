@@ -72,12 +72,18 @@ prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
     # Instructions
-    The following documents contain information extracted from a web search for "{{DonorName}}". Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, or an individual. In the case of an individual, you should classify them based on their profession or the industry they are closest associated with.
+
+    The following documents are web search results about {{DonorName}}, a {{RegulatedEntityName}} donor identified in data published by the UK Electoral Commission. Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, an individual, etc.
+    
+    If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
 
     We also know that the donor is a {{DonorStatus}}.
 
-    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.
+    Use the information provided in the documents to make your decision. Be critical, use common sense and respond only in English. Now, please proceed with your analysis and classification of {{DonorName}}.    
 structure:
+  chain_of_thought:
+    type: str
+    description: Understand the task and make a complete plan to accomplish it. Explain your reasoning. Then, carry out the plan, think of potential issues that might come up, then show your answer. Assess your own answer, think of ways to improve it, and then show the improved answer.
   industry:
     type: str
     description: What industry is this organisation or person associated with?
@@ -134,6 +140,12 @@ examples:
 
         The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
       confidence: 10
+  - input: "John Smith"
+    output:
+      industry: Don't know
+      explanation: |
+        The documents about John Smith refer to multiple people, so there's no way to accurately assess what industry this particular individual belongs to.
+      confidence: 1
 ```
 
 A few things to note about the configuration:
@@ -141,10 +153,12 @@ A few things to note about the configuration:
 - We’re using Brave due to its generous free API tier, but Google search
   results are generally more accurate.
 - Because our dataset is UK-centric, we’re setting the country to “GB”
-  in Brave. This should help to filter some of the irrelevant results.
+  in Brave. This should help filter out some of the irrelevant results.
 - The industries are based on the [Standard Industrial
   Classification](https://resources.companieshouse.gov.uk/sic/) groups.
   You can probably come up with something more clever.
+- We are using chain-of-thought to guide the model through the process
+  of classification. This can help improve accuracy.
 
 Because we’re using Brave and an OpenAI model, we need API keys for both
 services. Save them to a file called `.env` in the root of your project
@@ -155,9 +169,10 @@ directory:
 
 ## Running the augmentation
 
-Make sure you have `augmenta` [installed](https://github.com/Global-Witness/augmenta/tree/main?tab=readme-ov-file#installation), open the
-terminal and navigate to the directory where you saved the data,
-configuration file and API keys.
+Make sure you have `augmenta`
+[installed](https://github.com/Global-Witness/augmenta/tree/main?tab=readme-ov-file#installation),
+open the terminal and navigate to the directory where you saved the
+data, configuration file and API keys.
 
 Run the following command to start the classification.
 
@@ -172,32 +187,31 @@ called `data/donations_classified.csv` with the augmented data.
 library(gt)
 
 read_csv("data/donations_classified.csv") |>
-  select(-DonorStatus, -CompanyRegistrationNumber) |>
+  select(-DonorStatus, -CompanyRegistrationNumber, -chain_of_thought) |>
   gt() |>
   fmt_markdown(columns = "explanation")
 ```
 
-    Rows: 9 Columns: 8
+    Rows: 9 Columns: 9
     ── Column specification ────────────────────────────────────────────────────────
     Delimiter: ","
-    chr (5): RegulatedEntityName, DonorName, DonorStatus, industry, explanation
+    chr (6): RegulatedEntityName, DonorName, DonorStatus, chain_of_thought, indu...
     dbl (3): CompanyRegistrationNumber, Value, confidence
 
     ℹ Use `spec()` to retrieve the full column specification for this data.
     ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
-
 | RegulatedEntityName | DonorName | Value | industry | explanation | confidence |
 |----|----|----|----|----|----|
-| Labour Party | Labour Together Limited | 53824.20 | NGO or think-tank | Labour Together Limited operates as a think tank closely associated with the Labour Party in the UK. It was founded in 2015 to support Labour’s electoral strategies and contribute to policy development. Labour Together aims to provide innovative ideas and public policy research aligned with the Labour Party’s objectives, enhancing its electability. This is supported by various documents indicating their projects, reports, and their role in internal party dynamics as a means to significantly influence Labour’s political strategies. As such, its classification primarily aligns with the ‘NGO or think-tank’ category. More about Labour Together can be found on their official website <a href="https://www.labourtogether.uk/">Labour Together</a>. | 9 |
-| Labour Party | The Good Faith Partnership LLP | 15660.00 | Professional, scientific and technical activities | The Good Faith Partnership LLP operates as a social consultancy, working to connect businesses, governments, charities, and communities to tackle societal issues through collaboration. Their work involves engaging with a diverse set of stakeholders including political leaders and community representatives to bring about meaningful change. They are involved in public affairs, public policy, and strategic initiatives, as indicated on their website <a href="https://goodfaith.org.uk">Good Faith Partnership</a>. Their focus on cross-sector initiatives aligns with the Professional, scientific and technical activities category, as they emphasize the importance of strategic communication and collaboration which are hallmarks of a consultancy firm. | 8 |
-| Liberal Democrats | JOHN HEMMING TRADING LIMITED | 1000.00 | Arts, entertainment and recreation | JOHN HEMMING TRADING LIMITED is classified under the SIC code 90040, which pertains to the operation of arts facilities. The company is described as an active private limited company incorporated in 2011 and is based in Birmingham. The nature of the business indicates involvement in the arts sector, specifically in managing or operating facilities related to arts activities. This classification aligns with the information available from reliable sources such as Companies House and other business directories. Therefore, the industry associated with this company is clearly in the arts and recreation sector. | 9 |
-| Liberal Democrats | Patricia Bell | 2790.00 | Professional, scientific and technical activities | Patricia Bell is an individual who holds multiple professional roles and has been involved in significant community and advisory capacities. She is currently identified as the Cabinet Member for Adult Care and has several committee appointments related to health and wellbeing, indicating her active engagement in public administration pertaining to health services. Additionally, she is a strong advocate in various health and social work committees aimed at improving community care and support. These responsibilities position her within the professional domain related to public service and healthcare. For more detailed information about her current roles, you can refer to <a href="https://westmorlandandfurness.moderngov.co.uk/mgUserInfo.aspx?UID=169">Westmorland and Furness Council</a>. | 8 |
-| Liberal Democrats | Robert H Miall | 2500.00 | Arts, entertainment and recreation | Robert H Miall is primarily a writer, known for his works in science fiction and television tie-ins, as indicated by his publications such as ‘UFO’ and others that relate closely to the entertainment sector. His works have gained some recognition in literary databases and are available on platforms like Goodreads and Amazon, which categorize him as an author, emphasizing his contributions to literature and entertainment. Miall’s background suggests that he worked within the realm of the arts, particularly in writing for television series and book adaptations, aligning him with the industry of arts, entertainment, and recreation. | 8 |
-| Liberal Democrats | Scottish Parliament. | 4376.10 | Public administration and defence; compulsory social security | The Scottish Parliament is the unicameral legislature of Scotland, which is responsible for law-making and overseeing the Scottish government. It operates under a devolved government system established by the Scotland Act 1998, which delegated powers from the UK Parliament to the Parliament of Scotland. The Scottish Parliament handles various powers related to public administration including health, education, justice, and transport. This aligns it with the political and public administration sectors. Its role in representing and legislating for Scottish interests categorizes it firmly within the public sector of governmental activities. More details can be found on the <a href="https://www.parliament.scot/">Scottish Parliament website</a>. | 9 |
-| Liberal Democrats | Stephen F Gosling | 2500.00 | Arts, entertainment and recreation | Stephen F. Gosling is primarily associated with the arts, specifically as a pianist and a performer within the contemporary music scene. His performances span numerous notable venues and festivals across various continents, and he is recognized for his contributions to modern classical music as a member of various ensembles, including the American Modern Ensemble. Publications such as the New York Times and the Washington Post have spotlighted his artistry, demonstrating his significant role in the arts community. This categorization aligns with the information available from distinguished sources like <a href="https://americanmodernensemble.org/stephen-gosling-piano">American Modern Ensemble</a>, which showcases his contributions to contemporary music. | 8 |
-| Liberal Democrats | Wirral Liberal Club | 127709.80 | Accommodation and food service activities | The Wirral Liberal Club was a social club and public house located in Oxton, Merseyside. According to the information provided, it had a full pub license, which indicates that it was involved in serving food and beverages, thus classifying it under the accommodation and food service activities industry. However, the club has long-term closed since April 2019, and its premises underwent a change of use to residential apartments. Although the club itself is no longer operating, it was primarily associated with hospitality services before its closure, making this classification relevant. Sources: <a href="https://whatpub.com/pubs/WIR/333/wirral-liberal-club-oxton">WhatPub</a>, <a href="https://www1.camra.org.uk/pubs/wirral-liberal-club-oxton-132116">CAMRA</a>. | 8 |
-| Ulster Unionist Party | Northern Ireland Assembly | 7069.03 | Public administration and defence; compulsory social security | The Northern Ireland Assembly is a devolved legislature responsible for making laws and scrutinizing the work of ministers and government departments on various transferred matters such as health, education, and agriculture. As the governing body of Northern Ireland, it plays a crucial role in public administration. According to the <a href="https://www.niassembly.gov.uk/">Northern Ireland Assembly’s official website</a>, the assembly has the authority to legislate in a wide range of areas not reserved to the UK Parliament, focusing on local governance and public services. Its nature as a public institution aligns it closely with the public administration sector. | 8 |
+| Labour Party | Labour Together Limited | 53824.20 | Professional, scientific and technical activities | Labour Together Limited is a think tank that focuses on developing political policy and measuring public opinion, closely associated with the Labour Party. It was founded in June 2015 and operates as a private company limited by guarantee without share capital. The nature of its business is classified under SIC code 94990, which pertains to activities of other membership organizations not elsewhere classified. This classification aligns with the operations of a think tank, which typically engages in research and policy development. Therefore, it is classified under the industry of ‘Professional, scientific and technical activities’. | 8 |
+| Labour Party | The Good Faith Partnership LLP | 15660.00 | Professional, scientific and technical activities | The Good Faith Partnership LLP operates as a social consultancy, engaging with various sectors including government, charities, and businesses to tackle complex societal issues. Their work involves convening leaders from different fields to foster collaboration and develop innovative solutions, which is characteristic of the professional services industry. They are also members of The Public Relations and Communications Association (PRCA), indicating their involvement in public relations and communications, further supporting their classification in the professional services sector. Their focus on cross-sector initiatives and public policy aligns with the ‘Professional, scientific and technical activities’ industry classification. For more information, you can visit their <a href="https://goodfaith.org.uk">website</a>. | 8 |
+| Liberal Democrats | JOHN HEMMING TRADING LIMITED | 1000.00 | Arts, entertainment and recreation | JOHN HEMMING TRADING LIMITED is classified under the SIC code 90040, which corresponds to the ‘Operation of arts facilities’. This indicates that the company is involved in activities related to the arts and entertainment sector. The registered office is located in Birmingham, and the company has been active since its incorporation in 2011. The nature of business aligns with the arts industry, which includes various forms of artistic expression and facilities that support such activities. Therefore, it is reasonable to conclude that the company operates within the arts, entertainment, and recreation industry. | 9 |
+| Liberal Democrats | Patricia Bell | 2790.00 | Don't know | The documents refer to multiple individuals named Patricia Bell, including a politician, an author, and a retired management consultant. Without clear identification of which Patricia Bell is the donor, it is impossible to accurately classify her industry. Therefore, I classify her as “Don’t know” with a confidence level of 1. | 1 |
+| Liberal Democrats | Robert H Miall | 2500.00 | Arts, entertainment and recreation | Robert H Miall is identified as a writer, with a bibliography that includes science fiction and television tie-in novels. According to <a href="https://www.worldswithoutend.com/author.asp?ID=3797">Worlds Without End</a>, he was born in 1922 and passed away in 2011, and his works include titles related to the UFO genre. This clearly places him in the arts and entertainment sector, specifically in literature. Therefore, the most appropriate industry classification for Robert H Miall is ‘Arts, entertainment and recreation’. | 9 |
+| Liberal Democrats | Scottish Parliament. | 4376.10 | Public administration and defence; compulsory social security | The Scottish Parliament is the legislative body of Scotland, responsible for making laws and overseeing the Scottish Government. It was established in 1999 following a referendum that supported devolution. The Parliament has the authority to legislate on various devolved matters, including health, education, and justice, which are essential functions of public administration. As a public institution, it operates within the framework of government and public service, making it a key player in the public administration sector. This classification aligns with its role in governance and public policy-making in Scotland. | 9 |
+| Liberal Democrats | Stephen F Gosling | 2500.00 | Don't know | The documents refer to multiple individuals named Stephen Gosling, including a professional photographer and a pianist, but do not provide clear information linking them to the donor identified by the UK Electoral Commission. Therefore, it is not possible to accurately classify Stephen F Gosling into a specific industry based on the available information. | 1 |
+| Liberal Democrats | Wirral Liberal Club | 127709.80 | Political group | The Wirral Liberal Club is a trust associated with the Liberal Democrats, indicating its role as a political organization. It functions as a social club for members of the Liberal Party, providing a space for political discussion and community engagement. The club’s activities are closely tied to political advocacy and support for liberal values, which aligns it with the ‘Political group’ industry. This classification is supported by its historical context and current operations as a venue for political gatherings and discussions. | 8 |
+| Ulster Unionist Party | Northern Ireland Assembly | 7069.03 | Public administration and defence; compulsory social security | The Northern Ireland Assembly serves as the devolved legislature for Northern Ireland, responsible for making laws on a wide range of issues including health, education, and agriculture. It operates under the framework established by the Good Friday Agreement and is a key institution in the governance of Northern Ireland. The Assembly is composed of elected Members of the Legislative Assembly (MLAs) who represent the public and scrutinize the work of the government. Given its legislative and governance functions, it is classified under public administration. More information can be found on the official <a href="https://www.niassembly.gov.uk/">Northern Ireland Assembly website</a>. | 9 |
 
 </div>
 
@@ -210,11 +224,13 @@ fed](https://en.wikipedia.org/wiki/Garbage_in%2C_garbage_out). Google
 search results tend to be better than those offered by Brave or
 Duckduckgo, but they’re not perfect either.
 
-This is particularly an issue with individuals with generic names. For
-example, it’s likely that Patricia Bell in the dataset is not the
-University of Georgia professor surfaced by the search engine and
-classified by the LLM. This doesn’t stop the LLM from offering a high
-degree of confidence in its classification.
+This is particularly an issue with individuals with generic names. We
+have instructed the model to flag those cases as “Don’t know”, but it
+can still lead to some issues.
+
+For example, the “Robert H Miall” identified in the search results has
+passed away in 2011 (as noted by the LLM itself), so he can’t be the
+donor we’re looking for (the donations are from 2024).
 
 We can work around these limitations in a few ways:
 
