@@ -1,5 +1,8 @@
 import logging
+import asyncio
 from typing import Optional
+import sys
+import subprocess
 from playwright.async_api import (
     async_playwright, 
     TimeoutError as PlaywrightTimeout,
@@ -15,7 +18,41 @@ logger = logging.getLogger(__name__)
 class PlaywrightProvider(ContentProvider):
     """Provider that fetches content using Playwright browser automation."""
     
+    _browser_installed = False
+    
+    @classmethod
+    async def ensure_browser_installed(cls) -> None:
+        """Ensure Chromium browser is installed. Thread-safe and idempotent."""
+        if cls._browser_installed:
+            return
+            
+        try:
+            # Check if browser is already installed by trying to launch it
+            async with async_playwright() as p:
+                await p.chromium.launch()
+                cls._browser_installed = True
+                return
+        except PlaywrightError as e:
+            if "Browser is not installed" not in str(e):
+                raise
+            
+        logger.info("Installing Chromium browser for Playwright...")
+        try:
+            subprocess.check_call(
+                [sys.executable, "-m", "playwright", "install", "chromium"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            cls._browser_installed = True
+            logger.info("Chromium browser installation completed successfully")
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Failed to install Playwright browser: {e}")
+            raise
+    
     async def get_content(self, url: str, timeout: int = 30) -> Optional[str]:
+        # Ensure browser is installed before first use
+        await self.ensure_browser_installed()
+        
         browser = None
         context = None
         page = None
