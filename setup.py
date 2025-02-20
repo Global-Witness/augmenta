@@ -7,6 +7,9 @@ import sys
 def install_playwright_deps():
     print("Installing Playwright browsers...")
     try:
+        # First ensure playwright is installed
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
+        # Then install the browser
         subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
     except subprocess.CalledProcessError as e:
         print(f"Failed to install Playwright browsers: {e}")

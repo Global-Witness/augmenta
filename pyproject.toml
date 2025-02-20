@@ -40,4 +40,4 @@ CI = "https://github.com/Global-Witness/augmenta/actions"
 test = ["pytest"]
 
 [tool.setuptools]
-py-modules = []
+packages = ["augmenta"]
