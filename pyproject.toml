@@ -39,5 +39,6 @@ CI = "https://github.com/Global-Witness/augmenta/actions"
 [project.optional-dependencies]
 test = ["pytest"]
 
-[tool.setuptools]
-packages = ["augmenta"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["augmenta*"]
