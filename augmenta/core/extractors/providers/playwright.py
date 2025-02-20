@@ -82,17 +82,25 @@ class PlaywrightProvider(ContentProvider):
             logger.error(f"Unexpected error for {url}: {str(e)}")
             return None
         finally:
-            # Clean up resources in reverse order
-            try:
-                if page:
+            # Clean up resources in reverse order with individual try/except blocks
+            if page:
+                try:
                     await page.close()
-                if context:
+                except Exception as e:
+                    logger.debug(f"Error closing page: {str(e)}")
+            
+            if context:
+                try:
                     await context.close()
-                if browser:
+                except Exception as e:
+                    logger.debug(f"Error closing context: {str(e)}")
+            
+            if browser:
+                try:
                     await browser.close()
-            except Exception as e:
-                logger.warning(f"Error during Playwright cleanup: {str(e)}")
-    
+                except Exception as e:
+                    logger.debug(f"Error closing browser: {str(e)}")
+
     async def _create_context(self, browser: Browser) -> BrowserContext:
         """Create a new browser context with specific settings."""
         return await browser.new_context(

@@ -72,7 +72,41 @@ async def process_row(
             search_config=config["search"]  # Pass the entire search config
         )
         
-        urls_text = await extract_urls(urls)
+        # Track URL processing results
+        urls_with_content = await extract_urls(urls)
+        
+        # Categorize URLs
+        used_urls = []
+        no_content_urls = []
+        attempted_urls = set(urls)
+        
+        for url, content in urls_with_content:
+            if content and content.strip():
+                used_urls.append(url)
+                attempted_urls.remove(url)
+            elif content is not None:  # Empty string content
+                no_content_urls.append(url)
+                attempted_urls.remove(url)
+        
+        # Format the sources summary
+        sources_summary = []
+        if used_urls:
+            sources_summary.append("Used:")
+            sources_summary.extend(used_urls)
+        if no_content_urls:
+            if sources_summary:
+                sources_summary.append("")
+            sources_summary.append("No content:")
+            sources_summary.extend(no_content_urls)
+        if attempted_urls:
+            if sources_summary:
+                sources_summary.append("")
+            sources_summary.append("Attempted:")
+            sources_summary.extend(attempted_urls)
+        
+        # Filter out URLs with no content for the prompt
+        valid_urls = [(url, content) for url, content in urls_with_content if content and content.strip()]
+        
         prompt_user = config["prompt"]["user"]
         
         for column, value in row.items():
@@ -82,7 +116,7 @@ async def process_row(
             if examples_text := format_examples(examples_yaml):
                 prompt_user = f'{prompt_user}\n\n{examples_text}'
         
-        prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(urls_text)}'
+        prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(valid_urls)}'
 
         Structure = LLMClient.create_structure_class(config["config_path"])
         response = await make_request_llm(
@@ -104,6 +138,10 @@ async def process_row(
         
         if progress_callback:
             progress_callback(query)
+        
+        # Add sources summary to response
+        if isinstance(response, dict):
+            response['augmenta_sources'] = "\n".join(sources_summary)
             
         return ProcessingResult(index=index, data=response)
         
