@@ -26,7 +26,7 @@ For the purposes of this example, we'll only keep the columns that contain infor
 ```{r}
 #| output: false
 donations <- donations_raw |>
-  slice_tail(n = 10) |>
+  slice_sample(n = 10) |>
   select(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber, Value) |>
   mutate(Value = parse_number(Value)) |>
   # remove duplicate rows

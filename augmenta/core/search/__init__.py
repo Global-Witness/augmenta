@@ -1,15 +1,12 @@
 from typing import List, Dict, Any
 from .factory import SearchProviderFactory
-from augmenta.utils.utils import RateLimiter
 from .providers import (
-    SearchProvider, 
+    SearchProvider,
     BraveSearchProvider,
     GoogleSearchProvider,
     DuckDuckGoSearchProvider,
     OxylabsSearchProvider
 )
-
-_rate_limiter: RateLimiter | None = None
 
 async def search_web(
     query: str,

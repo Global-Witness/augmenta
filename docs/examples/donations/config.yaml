@@ -85,5 +85,5 @@ examples:
     output:
       industry: Don't know
       explanation: |
-        The documents about John Smith refer to multiple people, so there's no way to accurately assess what industry this particular individual belongs to.
+        The documents about John Smith refer to multiple people (a [British polician](https://en.wikipedia.org/wiki/John_Smith_(Labour_Party_leader)), an [explorer](https://en.wikipedia.org/wiki/John_Smith_(explorer)), a [singer-songwriter](https://johnsmithjohnsmith.com/)), so there's no way to accurately assess what industry this particular individual belongs to.
       confidence: 1

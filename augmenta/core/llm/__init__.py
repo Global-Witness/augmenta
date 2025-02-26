@@ -1,9 +1,7 @@
 from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
 from .llm_client import LLMClient
-from augmenta.utils.utils import RateLimiter
-
-_rate_limiter: Optional[RateLimiter] = None
+from augmenta.core.rate_limit.limiter import RateLimitManager
 
 async def make_request_llm(
     prompt_system: str,
@@ -16,15 +14,15 @@ async def make_request_llm(
     """Makes a rate-limited request to an LLM with optional structured output."""
     if not prompt_system or not prompt_user:
         raise ValueError("Both system and user prompts are required")
-        
-    global _rate_limiter
-    if rate_limit and not _rate_limiter:
-        _rate_limiter = RateLimiter(rate_limit)
-        
-    if _rate_limiter:
-        await _rate_limiter.acquire()
-        
+    
     client = LLMClient(model, max_tokens)
-    return await client.complete(prompt_system, prompt_user, response_format)
+    
+    if rate_limit:
+        # Convert rate_limit from seconds to requests per second
+        rate = 1.0 / rate_limit if rate_limit else None
+        async with RateLimitManager.acquire("LLMClient", rate):
+            return await client.complete(prompt_system, prompt_user, response_format)
+    else:
+        return await client.complete(prompt_system, prompt_user, response_format)
 
 __all__ = ['make_request_llm', 'LLMClient']
