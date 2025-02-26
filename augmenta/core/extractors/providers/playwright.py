@@ -58,6 +58,7 @@ class PlaywrightProvider(ContentProvider):
         page = None
         
         try:
+            logger.debug(f"Initializing Playwright for {url}")
             async with async_playwright() as p:
                 browser = await p.chromium.launch(
                     headless=True,
@@ -66,11 +67,27 @@ class PlaywrightProvider(ContentProvider):
                         '--disable-features=IsolateOrigins,site-per-process',
                     ]
                 )
+                logger.debug(f"Browser launched for {url}")
                 
                 context = await self._create_context(browser)
-                page = await context.new_page()
+                logger.debug(f"Browser context created for {url}")
                 
-                return await self._navigate_and_get_content(page, url, timeout)
+                page = await context.new_page()
+                logger.debug(f"New page created for {url}")
+                
+                # Create a task for content extraction
+                content_task = asyncio.create_task(
+                    self._navigate_and_get_content(page, url, timeout)
+                )
+                
+                try:
+                    return await content_task
+                except asyncio.CancelledError:
+                    logger.error(f"Content extraction cancelled for {url}")
+                    # Ensure task is properly cleaned up
+                    if not content_task.done():
+                        content_task.cancel()
+                    return None
                 
         except PlaywrightTimeout:
             logger.error(f"Playwright timeout for {url}")
@@ -82,24 +99,38 @@ class PlaywrightProvider(ContentProvider):
             logger.error(f"Unexpected error for {url}: {str(e)}")
             return None
         finally:
+            logger.debug(f"Starting cleanup for {url}")
             # Clean up resources in reverse order with individual try/except blocks
+            cleanup_timeout = 5  # 5 seconds timeout for cleanup operations
+            
             if page:
                 try:
-                    await page.close()
+                    logger.debug(f"Closing page for {url}")
+                    await asyncio.wait_for(page.close(), timeout=cleanup_timeout)
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout while closing page for {url}")
                 except Exception as e:
                     logger.debug(f"Error closing page: {str(e)}")
             
             if context:
                 try:
-                    await context.close()
+                    logger.debug(f"Closing context for {url}")
+                    await asyncio.wait_for(context.close(), timeout=cleanup_timeout)
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout while closing context for {url}")
                 except Exception as e:
                     logger.debug(f"Error closing context: {str(e)}")
             
             if browser:
                 try:
-                    await browser.close()
+                    logger.debug(f"Closing browser for {url}")
+                    await asyncio.wait_for(browser.close(), timeout=cleanup_timeout)
+                except asyncio.TimeoutError:
+                    logger.error(f"Timeout while closing browser for {url}")
                 except Exception as e:
                     logger.debug(f"Error closing browser: {str(e)}")
+                    
+            logger.debug(f"Cleanup completed for {url}")
 
     async def _create_context(self, browser: Browser) -> BrowserContext:
         """Create a new browser context with specific settings."""
@@ -110,13 +141,14 @@ class PlaywrightProvider(ContentProvider):
         )
     
     async def _navigate_and_get_content(
-        self, 
-        page: Page, 
-        url: str, 
+        self,
+        page: Page,
+        url: str,
         timeout: int
     ) -> Optional[str]:
         """Handle page navigation and content extraction."""
         try:
+            logger.debug(f"Starting navigation to {url}")
             # Set shorter timeout for initial navigation
             navigation_timeout = min(timeout * 1000, 30000)  # max 30 seconds
             
@@ -126,6 +158,7 @@ class PlaywrightProvider(ContentProvider):
                 timeout=navigation_timeout,
                 wait_until='domcontentloaded'  # Less strict than 'networkidle'
             )
+            logger.debug(f"Navigation completed for {url}")
             
             if not response:
                 logger.warning(f"No response received for {url}")
@@ -137,7 +170,9 @@ class PlaywrightProvider(ContentProvider):
             
             # Wait for network to be relatively idle
             try:
+                logger.debug(f"Waiting for network idle state for {url}")
                 await page.wait_for_load_state('networkidle', timeout=5000)
+                logger.debug(f"Network idle state reached for {url}")
             except PlaywrightTimeout:
                 logger.info(f"Network idle timeout for {url} - proceeding anyway")
             
@@ -147,13 +182,23 @@ class PlaywrightProvider(ContentProvider):
                 logger.warning(f"Redirected to login page: {current_url}")
                 return None
             
-            # Get the page content
-            content = await page.content()
-            if not content or len(content.strip()) < 100:  # Minimum content length
-                logger.warning(f"Retrieved insufficient content for {url}")
-                return None
+            try:
+                logger.debug(f"Starting content extraction for {url}")
+                # Get the page content with explicit timeout
+                content = await asyncio.wait_for(
+                    page.content(),
+                    timeout=timeout
+                )
+                logger.debug(f"Content extraction completed for {url}")
                 
-            return content
+                if not content or len(content.strip()) < 100:  # Minimum content length
+                    logger.warning(f"Retrieved insufficient content for {url}")
+                    return None
+                    
+                return content
+            except asyncio.TimeoutError:
+                logger.error(f"Content extraction timed out for {url}")
+                return None
             
         except PlaywrightTimeout:
             logger.error(f"Navigation timeout for {url}")
