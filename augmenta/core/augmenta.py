@@ -9,10 +9,11 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, Callable, Set
 from dataclasses import dataclass
 
-from augmenta.core.search import search_web
-from augmenta.core.extractors import extract_urls
+from augmenta.core.search import _search_web_impl
+from augmenta.core.extractors import _visit_webpages_impl
 from augmenta.core.prompt import format_docs, format_examples
-from augmenta.core.llm import make_request_llm, LLMClient
+from augmenta.core.llm.base import BaseAgent, make_request_llm
+from augmenta.core.llm.agent import WebResearchAgent
 from augmenta.core.cache import CacheManager
 from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
@@ -49,13 +50,30 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(config.get("prompt"), dict):
         raise AugmentaError("'prompt' must be a dictionary")
 
+def get_model_settings(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract model settings from config."""
+    model_config = config.get("model", {})
+    settings = {}
+    
+    if "rate_limit" in model_config:
+        settings["rate_limit"] = model_config["rate_limit"]
+    if "max_tokens" in model_config:
+        settings["max_tokens"] = model_config["max_tokens"]
+    if "temperature" in model_config:
+        settings["temperature"] = model_config["temperature"]
+    else:
+        settings["temperature"] = 0.0  # Default temperature
+        
+    return settings
+
 async def process_row(
     row_data: Dict[str, Any],
     config: Dict[str, Any],
     credentials: Dict[str, str],
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    verbose: bool = False
 ) -> ProcessingResult:
     """Process a single data row asynchronously."""
     try:
@@ -63,70 +81,113 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        urls = await search_web(
-            query=query,
-            results=config["search"]["results"],
-            engine=config["search"]["engine"],
-            rate_limit=config["search"].get("rate_limit"),
-            credentials=credentials,
-            search_config=config["search"]  # Pass the entire search config
-        )
+        # Get model settings from config
+        model_settings = get_model_settings(config)
+        model_id = f"{config['model']['provider']}:{config['model']['name']}"
         
-        # Track URL processing results
-        urls_with_content = await extract_urls(urls)
+        # Check if agent mode is enabled
+        agent_config = config.get("agent", {})
+        use_agent = agent_config.get("enabled", False)
         
-        # Categorize URLs
-        used_urls = []
-        no_content_urls = []
-        attempted_urls = set(urls)
-        
-        for url, content in urls_with_content:
-            if content and content.strip():
-                used_urls.append(url)
-                attempted_urls.remove(url)
-            elif content is not None:  # Empty string content
-                no_content_urls.append(url)
-                attempted_urls.remove(url)
-        
-        # Format the sources summary
-        sources_summary = []
-        if used_urls:
-            sources_summary.append("Used:")
-            sources_summary.extend(used_urls)
-        if no_content_urls:
-            if sources_summary:
-                sources_summary.append("")
-            sources_summary.append("No content:")
-            sources_summary.extend(no_content_urls)
-        if attempted_urls:
-            if sources_summary:
-                sources_summary.append("")
-            sources_summary.append("Attempted:")
-            sources_summary.extend(attempted_urls)
-        
-        # Filter out URLs with no content for the prompt
-        valid_urls = [(url, content) for url, content in urls_with_content if content and content.strip()]
-        
-        prompt_user = config["prompt"]["user"]
-        
-        for column, value in row.items():
-            prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
-        
-        if examples_yaml := config.get("examples"):
-            if examples_text := format_examples(examples_yaml):
-                prompt_user = f'{prompt_user}\n\n{examples_text}'
-        
-        prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(valid_urls)}'
+        if use_agent:
+            # Use WebResearchAgent for autonomous operation
+            agent = WebResearchAgent(
+                model=model_id,
+                verbose=verbose,
+                **model_settings
+            )
+            
+            # Format prompt with row data
+            prompt_user = config["prompt"]["user"]
+            for column, value in row.items():
+                prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
+                
+            # Add examples if configured
+            if examples_yaml := config.get("examples"):
+                if examples_text := format_examples(examples_yaml):
+                    prompt_user = f'{prompt_user}\n\n{examples_text}'
+            
+            Structure = BaseAgent.create_structure_class(config["config_path"])
+            # Let the agent handle search and extraction
+            response = await agent.run(prompt_user, response_format=Structure)
+            
+        else:
+            # Use traditional approach with base agent functionality
+            search_results = await _search_web_impl(
+                query=query,
+                results=config["search"]["results"],
+                engine=config["search"]["engine"],
+                rate_limit=config["search"].get("rate_limit"),
+                credentials=credentials,
+                search_config=config["search"]
+            )
+            
+            urls = [result['url'] for result in search_results]
+            
+            # Get extraction config options if provided
+            extraction_config = config.get("extraction", {})
+            raw_results = await _visit_webpages_impl(
+                urls=urls,
+                max_workers=extraction_config.get("max_workers", 10),
+                timeout=extraction_config.get("timeout", 30)
+            )
+            
+            # Categorize URLs
+            used_urls = []
+            no_content_urls = []
+            attempted_urls = set(urls)
+            
+            for url, content in raw_results:
+                if content and content.strip():
+                    used_urls.append(url)
+                    attempted_urls.remove(url)
+                elif content is not None:  # Empty string content
+                    no_content_urls.append(url)
+                    attempted_urls.remove(url)
+            
+            # Format the sources summary
+            sources_summary = []
+            if used_urls:
+                sources_summary.append("Used:")
+                sources_summary.extend(used_urls)
+            if no_content_urls:
+                if sources_summary:
+                    sources_summary.append("")
+                sources_summary.append("No content:")
+                sources_summary.extend(no_content_urls)
+            if attempted_urls:
+                if sources_summary:
+                    sources_summary.append("")
+                sources_summary.append("Attempted:")
+                sources_summary.extend(attempted_urls)
+            
+            # Filter out URLs with no content for the prompt
+            valid_urls = [(url, content) for url, content in raw_results if content and content.strip()]
+            
+            prompt_user = config["prompt"]["user"]
+            
+            for column, value in row.items():
+                prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
+            
+            if examples_yaml := config.get("examples"):
+                if examples_text := format_examples(examples_yaml):
+                    prompt_user = f'{prompt_user}\n\n{examples_text}'
+            
+            prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(valid_urls)}'
 
-        Structure = LLMClient.create_structure_class(config["config_path"])
-        response = await make_request_llm(
-            prompt_system=config["prompt"]["system"],
-            prompt_user=prompt_user,
-            model=config["model"]["name"],
-            response_format=Structure,
-            rate_limit=config["model"].get("rate_limit"),
-            max_tokens=config.get("model", {}).get("max_tokens")
-        )
+            Structure = BaseAgent.create_structure_class(config["config_path"])
+            response = await make_request_llm(
+                prompt_system=config["prompt"]["system"],
+                prompt_user=prompt_user,
+                model=model_id,
+                response_format=Structure,
+                verbose=verbose,
+                **model_settings
+            )
+            
+            # Add sources summary to response if it's a dict
+            if isinstance(response, dict):
+                response['augmenta_sources'] = "\n".join(sources_summary)
         
         if cache_manager and process_id:
             cache_manager.cache_result(
@@ -138,10 +199,6 @@ async def process_row(
         
         if progress_callback:
             progress_callback(query)
-        
-        # Add sources summary to response
-        if isinstance(response, dict):
-            response['augmenta_sources'] = "\n".join(sources_summary)
             
         return ProcessingResult(index=index, data=response)
         
@@ -154,7 +211,8 @@ async def process_augmenta(
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
-    auto_resume: bool = True
+    auto_resume: bool = True,
+    verbose: bool = False
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """Process data using the Augmenta pipeline."""
     config_path = Path(config_path)
@@ -214,7 +272,8 @@ async def process_augmenta(
             credentials=credentials,
             cache_manager=cache_manager,
             process_id=process_id,
-            progress_callback=update_progress
+            progress_callback=update_progress,
+            verbose=verbose
         ) for row in rows_to_process
     ]
     
