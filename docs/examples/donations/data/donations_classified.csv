@@ -1,10 +1,14 @@
 RegulatedEntityName,DonorName,DonorStatus,CompanyRegistrationNumber,Value,chain_of_thought,industry,explanation,confidence,augmenta_sources
-Conservative and Unionist Party,David E Jay,Individual,,833,"David E Jay is identified as an individual and is primarily known as an asexual activist. His main contribution is through the Asexual Visibility and Education Network (AVEN), which he founded to promote awareness and acceptance of asexuality. Given that his work is centered around activism and education related to asexuality, it does not fit neatly into traditional industry classifications like manufacturing or finance. Instead, it aligns more closely with social activism and education. However, since the documents do not specify a clear industry classification for his activism, I will categorize him under 'Other' for the purpose of this analysis. 
-
-The confidence level is set to 5 because while I have sufficient information about his activism, the classification of 'Other' is somewhat vague and does not provide a definitive industry label. 
-
-In summary, David E Jay is best classified under 'Other' due to his role as an activist, which does not fit into conventional industry categories.",Other,"David E Jay is primarily known as an asexual activist and the founder of the Asexual Visibility and Education Network (AVEN), which focuses on promoting awareness and acceptance of asexuality. His work is centered around social activism and education, which does not fit neatly into traditional industry classifications. Therefore, he is categorized under 'Other'.",5.0,"Used:
+Conservative and Unionist Party,David E Jay,Individual,,833,"The documents provided contain information about multiple individuals named David Jay. The first document discusses David Jay as an asexual activist and founder of the Asexual Visibility and Education Network (AVEN), which is related to social activism and education. The second document describes another David Jay as a Co-Managing Shareholder and litigator at a law firm, involved in complex commercial litigation. The third document does not provide relevant information about an individual. The fourth document is a general search page, and the fifth document describes a David Jay who has built and sold several companies, indicating a background in entrepreneurship and business. Given the presence of multiple individuals with the same name and the lack of clear identification linking them to the donor in question, it is difficult to ascertain which David Jay is the correct one. Therefore, I will classify the industry as ""Don't know"" and set the confidence level to 1, as there is insufficient information to definitively categorize David E Jay's industry.",Don't know,"The documents refer to multiple individuals named David Jay, including an asexual activist, a litigator, and an entrepreneur. Without clear identification linking them to the donor in question, it is impossible to determine the specific industry of David E Jay. Therefore, the classification is set to ""Don't know.""",1.0,"Used:
 https://en.wikipedia.org/wiki/David_Jay
+https://www.gtlaw.com/en/professionals/j/jay-david
+https://www.facebook.com/david.e.jay.7/
+https://www.192.com/atoz/people/jay/david/
+https://www.davidjay.com/
+https://www.facebook.com/davidjayofficial/
+https://twitter.com/davidgljay
 
 Attempted:
-https://www.martindale.com/attorney/david-e-jay-esq-1423275/"
+https://open.spotify.com/artist/7a5hqyXa3DANEicriQDURV
+https://www.martindale.com/attorney/david-e-jay-esq-1423275/
+https://www.instagram.com/davidjayofficial/"

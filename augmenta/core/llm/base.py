@@ -4,6 +4,15 @@ import logging
 import yaml
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import Agent
+from pydantic_ai.usage import UsageLimits
+
+try:
+    import logfire
+    logfire.configure()
+    logfire.instrument_httpx(capture_all=True)
+    HAS_LOGFIRE = True
+except ImportError:
+    HAS_LOGFIRE = False
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +29,8 @@ class BaseAgent:
         model: str, 
         temperature: float = 0.0,
         rate_limit: Optional[float] = None,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        verbose: bool = False
     ):
         """Initialize the base agent.
         
@@ -29,6 +39,7 @@ class BaseAgent:
             temperature: Temperature setting for the model
             rate_limit: Optional rate limit between requests
             max_tokens: Optional maximum tokens for response
+            verbose: Whether to enable verbose logging with logfire
         """
         # Create model settings with all available parameters
         model_settings = {'temperature': temperature}
@@ -45,6 +56,7 @@ class BaseAgent:
         self.temperature = temperature
         self.rate_limit = rate_limit
         self.max_tokens = max_tokens
+        self.verbose = verbose
 
     @staticmethod
     def create_structure_class(yaml_file_path: Union[str, Path]) -> Type[BaseModel]:
@@ -119,12 +131,14 @@ class BaseAgent:
             result = await self.agent.run(
                 prompt_user,
                 result_type=response_format,
-                model_settings=model_settings
+                model_settings=model_settings,
+                usage_limits=UsageLimits()
             )
 
             # Return the appropriate result format
             return result.data.model_dump() if response_format else result.data
         except Exception as e:
+            logger.error(f"LLM request failed: {e}")
             raise RuntimeError(f"LLM request failed: {e}")
 
 async def make_request_llm(
@@ -134,7 +148,8 @@ async def make_request_llm(
     response_format: Optional[Type[BaseModel]] = None,
     rate_limit: Optional[float] = None,
     max_tokens: Optional[int] = None,
-    temperature: Optional[float] = None
+    temperature: Optional[float] = None,
+    verbose: bool = False
 ) -> Union[str, Dict[str, Any], BaseModel]:
     """Make a request to the LLM.
     
@@ -146,6 +161,7 @@ async def make_request_llm(
         rate_limit: Optional rate limit between requests
         max_tokens: Optional maximum tokens for response
         temperature: Optional temperature setting for the model
+        verbose: Whether to enable verbose logging
         
     Returns:
         The model's response in the appropriate format
@@ -154,7 +170,8 @@ async def make_request_llm(
         model=model,
         temperature=temperature if temperature is not None else 0.0,
         rate_limit=rate_limit,
-        max_tokens=max_tokens
+        max_tokens=max_tokens,
+        verbose=verbose
     )
     
     return await agent.complete(

@@ -72,7 +72,8 @@ async def process_row(
     credentials: Dict[str, str],
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
-    progress_callback: Optional[Callable[[str], None]] = None
+    progress_callback: Optional[Callable[[str], None]] = None,
+    verbose: bool = False
 ) -> ProcessingResult:
     """Process a single data row asynchronously."""
     try:
@@ -92,6 +93,7 @@ async def process_row(
             # Use WebResearchAgent for autonomous operation
             agent = WebResearchAgent(
                 model=model_id,
+                verbose=verbose,
                 **model_settings
             )
             
@@ -176,6 +178,7 @@ async def process_row(
                 prompt_user=prompt_user,
                 model=model_id,
                 response_format=Structure,
+                verbose=verbose,
                 **model_settings
             )
             
@@ -205,7 +208,8 @@ async def process_augmenta(
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
-    auto_resume: bool = True
+    auto_resume: bool = True,
+    verbose: bool = False
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """Process data using the Augmenta pipeline."""
     config_path = Path(config_path)
@@ -265,7 +269,8 @@ async def process_augmenta(
             credentials=credentials,
             cache_manager=cache_manager,
             process_id=process_id,
-            progress_callback=update_progress
+            progress_callback=update_progress,
+            verbose=verbose
         ) for row in rows_to_process
     ]
     

@@ -16,6 +16,7 @@ class WebResearchAgent(BaseAgent):
         temperature: float = 0.0,
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
+        verbose: bool = False,
         system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyze web pages."
     ):
         """Initialize the web research agent.
@@ -25,13 +26,15 @@ class WebResearchAgent(BaseAgent):
             temperature: Temperature setting for the model
             rate_limit: Optional rate limit between requests
             max_tokens: Optional maximum tokens for response
+            verbose: Whether to enable verbose logging with logfire
             system_prompt: Default system prompt for the agent
         """
         super().__init__(
             model=model,
             temperature=temperature,
             rate_limit=rate_limit,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            verbose=verbose
         )
         self.system_prompt = system_prompt
         self.register_tools()
@@ -70,11 +73,6 @@ class WebResearchAgent(BaseAgent):
             
     async def run(self, prompt: str) -> str:
         """Run the agent to perform web research.
-        
-        This method uses the agent's tools to:
-        1. Search the web for relevant information
-        2. Visit and extract content from web pages
-        3. Synthesize the information into a response
         
         Args:
             prompt: The research query or task

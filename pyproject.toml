@@ -38,6 +38,7 @@ CI = "https://github.com/Global-Witness/augmenta/actions"
 
 [project.optional-dependencies]
 test = ["pytest"]
+logfire = ["pydantic-ai[logfire]"]
 
 [tool.setuptools.packages.find]
 where = ["."]
