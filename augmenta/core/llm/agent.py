@@ -1,6 +1,7 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Type, Union, Any
 import logging
 from pydantic_ai import RunContext
+from pydantic import BaseModel
 from ..search import search_web as search_web_impl
 from ..extractors import visit_webpages as visit_webpages_impl
 from .base import BaseAgent
@@ -43,7 +44,7 @@ class WebResearchAgent(BaseAgent):
         """Register the web search and page extraction tools."""
         
         @self.agent.tool_plain
-        async def search_web(query: str) -> List[str]:
+        async def search_web(query: str) -> str:
             """Search the web for information.
             
             Uses a search engine to find relevant web pages about a topic.
@@ -52,7 +53,7 @@ class WebResearchAgent(BaseAgent):
                 query: The search query to execute
                 
             Returns:
-                A list of relevant URLs
+                Markdown formatted search results with titles and descriptions
             """
             return await search_web_impl(query)
             
@@ -71,16 +72,18 @@ class WebResearchAgent(BaseAgent):
             """
             return await visit_webpages_impl(urls)
             
-    async def run(self, prompt: str) -> str:
+    async def run(self, prompt: str, response_format: Optional[Type[BaseModel]] = None) -> Union[str, dict[str, Any], BaseModel]:
         """Run the agent to perform web research.
         
         Args:
             prompt: The research query or task
+            response_format: Optional Pydantic model for structured output
             
         Returns:
-            The agent's response after researching
+            The agent's response after researching, either as string, dict or Pydantic model
         """
         return await self.complete(
             prompt_system=self.system_prompt,
-            prompt_user=prompt
+            prompt_user=prompt,
+            response_format=response_format
         )

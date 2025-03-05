@@ -132,7 +132,7 @@ class BaseAgent:
                 prompt_user,
                 result_type=response_format,
                 model_settings=model_settings,
-                usage_limits=UsageLimits()
+                usage_limits=UsageLimits(request_limit=5)
             )
 
             # Return the appropriate result format

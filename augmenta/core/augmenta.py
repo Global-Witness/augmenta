@@ -107,12 +107,13 @@ async def process_row(
                 if examples_text := format_examples(examples_yaml):
                     prompt_user = f'{prompt_user}\n\n{examples_text}'
             
+            Structure = BaseAgent.create_structure_class(config["config_path"])
             # Let the agent handle search and extraction
-            response = await agent.run(prompt_user)
+            response = await agent.run(prompt_user, response_format=Structure)
             
         else:
             # Use traditional approach with base agent functionality
-            urls = await _search_web_impl(
+            search_results = await _search_web_impl(
                 query=query,
                 results=config["search"]["results"],
                 engine=config["search"]["engine"],
@@ -120,6 +121,8 @@ async def process_row(
                 credentials=credentials,
                 search_config=config["search"]
             )
+            
+            urls = [result['url'] for result in search_results]
             
             # Get extraction config options if provided
             extraction_config = config.get("extraction", {})

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, List
+from typing import Optional, List, Dict
 import httpx
 import logging
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
@@ -40,11 +40,11 @@ class SearchProvider(ABC):
         return None
 
     @abstractmethod
-    async def _search_implementation(self, query: str, results: int) -> List[str]:
-        """Provider-specific search implementation."""
+    async def _search_implementation(self, query: str, results: int) -> List[Dict[str, str]]:
+        """Provider-specific search implementation. Returns list of dicts with 'url', 'title', and 'description'."""
         pass
 
-    async def search(self, query: str, results: int, rate_limit: Optional[float] = None) -> List[str]:
+    async def search(self, query: str, results: int, rate_limit: Optional[float] = None) -> List[Dict[str, str]]:
         """Execute search with optional rate limiting."""
         if rate_limit is not None and rate_limit > 0:
             async with RateLimitManager.acquire(self.__class__.__name__, rate_limit=rate_limit):

@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict
 from .base import SearchProvider
 
 class BraveSearchProvider(SearchProvider):
@@ -10,7 +10,7 @@ class BraveSearchProvider(SearchProvider):
         super().__init__()
         self.api_key = api_key
 
-    async def _search_implementation(self, query: str, results: int) -> List[str]:
+    async def _search_implementation(self, query: str, results: int) -> List[Dict[str, str]]:
         """Execute search and return list of result URLs."""
         if not self.api_key:
             return []
@@ -32,8 +32,14 @@ class BraveSearchProvider(SearchProvider):
             params=params
         )
         
-        if not response_data:
+        if not response_data or not isinstance(response_data, dict):
             return []
             
         web_results = response_data.get("web", {}).get("results", [])
-        return [result["url"] for result in web_results]
+        return [
+            {
+                "url": result["url"],
+                "title": result["title"],
+                "description": result["description"]
+            }
+            for result in web_results]
