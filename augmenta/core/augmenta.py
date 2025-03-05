@@ -122,7 +122,7 @@ async def process_row(
         response = await make_request_llm(
             prompt_system=config["prompt"]["system"],
             prompt_user=prompt_user,
-            model=config["model"]["name"],
+            model=f"{config['model']['provider']}:{config['model']['name']}",
             response_format=Structure,
             rate_limit=config["model"].get("rate_limit"),
             max_tokens=config.get("model", {}).get("max_tokens")

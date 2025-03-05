@@ -1,12 +1,12 @@
 input_csv: data/donations.csv
 output_csv: data/donations_classified.csv
 model:
-  name: openai/gpt-4o-mini
-  max_tokens: 20000
+  provider: openai
+  name: gpt-4o-mini
 query_col: DonorName
 search:
   engine: brave
-  results: 10
+  results: 2
   rate_limit: 2
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.

@@ -4,15 +4,9 @@ from functools import lru_cache
 import logging
 import yaml
 from pydantic import BaseModel, Field, create_model
-import instructor
-from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
-from instructor.exceptions import InstructorRetryException
 
-# This gets rid of the LLM costs lookup message
-logging.getLogger('httpx').setLevel(logging.WARNING)
-
-from litellm import Router
-from litellm.utils import trim_messages
+# Import Agent from pydantic_ai instead of using a custom implementation
+from pydantic_ai import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -27,30 +21,16 @@ class LLMClient:
     def __init__(
         self, 
         model: str, 
-        max_tokens: Optional[int] = None,
-        max_retries: int = 3,
-        retry_wait_seconds: int = 1,
-        temperature: float = 0.0  # Added temperature parameter with default 0
+        temperature: float = 0.0
     ):
-        router = Router(
-            model_list=[{
-                "model_name": model,
-                "litellm_params": {
-                    "model": model,
-                    "temperature": temperature  # Set temperature in litellm params
-                },
-            }],
-            default_litellm_params={"acompletion": True}
+        # Create an Agent with just the temperature setting
+        model_settings = {'temperature': temperature}
+            
+        self.agent = Agent(
+            model,
+            model_settings=model_settings
         )
-        self.client = instructor.patch(router)
         self.model = model
-        self.max_tokens = max_tokens
-        self.temperature = temperature
-        self.retry_config = AsyncRetrying(
-            stop=stop_after_attempt(max_retries),
-            wait=wait_fixed(retry_wait_seconds),
-            reraise=True
-        )
 
     @staticmethod
     @lru_cache(maxsize=32)
@@ -92,41 +72,23 @@ class LLMClient:
         temperature: Optional[float] = None  # Allow overriding temperature per request
     ) -> Union[str, dict[str, Any], BaseModel]:
         """Generates structured or unstructured completion"""
-        messages = [
-            {"role": "system", "content": prompt_system},
-            {"role": "user", "content": prompt_user}
-        ]
-        
         try:
-            if self.max_tokens:
-                messages = trim_messages(messages, max_tokens=self.max_tokens, model=self.model)
+            # Create model_settings for this specific request if temperature is provided
+            model_settings = None
+            if temperature is not None:
+                model_settings = {'temperature': temperature}
                 
-            # Use request-specific temperature if provided, otherwise use instance default
-            temp = temperature if temperature is not None else self.temperature
-                
-            if response_format is None:
-                response = await self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=temp
-                )
-                return response.choices[0].message.content
+            # Set the system prompt
+            self.agent.system_prompt = prompt_system
             
-            result = await self.client.chat.completions.create(
-                model=self.model,
-                response_model=response_format,
-                messages=messages,
-                max_retries=self.retry_config,
-                temperature=temp
+            # Run the agent with the appropriate parameters
+            result = await self.agent.run(
+                prompt_user,
+                result_type=response_format,
+                model_settings=model_settings
             )
-            
-            return result.model_dump()
-                
-        except InstructorRetryException as e:
-            logger.error(
-                f"Validation error after {e.n_attempts} attempts. "
-                f"Last error: {e.messages[-1]['content'] if e.messages else 'Unknown error'}"
-            )
-            raise RuntimeError(f"LLM request failed after {e.n_attempts} retries: {e}")
+
+            # Return the appropriate result format
+            return result.data.model_dump() if response_format else result.data
         except Exception as e:
             raise RuntimeError(f"LLM request failed: {e}")
