@@ -11,11 +11,10 @@ from playwright.async_api import (
     Browser,
     BrowserContext
 )
-from .base import ContentProvider
 
 logger = logging.getLogger(__name__)
 
-class PlaywrightProvider(ContentProvider):
+class PlaywrightProvider:
     """Provider that fetches content using Playwright browser automation."""
     
     _browser_installed = False

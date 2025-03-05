@@ -1,5 +1,7 @@
 input_csv: data/donations.csv
 output_csv: data/donations_classified.csv
+agent:
+  enabled: false
 model:
   provider: openai
   name: gpt-4o-mini

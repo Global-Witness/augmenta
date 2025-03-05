@@ -1,5 +1,4 @@
 from typing import List, Literal, Dict, Any, Optional
-from pydantic_ai import Agent
 from .providers import (
     BraveSearchProvider,
     GoogleSearchProvider,
@@ -16,8 +15,6 @@ CREDENTIALS: Dict[str, str] = {
     "GOOGLE_API_KEY": None,
     "GOOGLE_CX": None
 }
-
-agent = Agent()
 
 async def _search_web_impl(
     query: str,
@@ -51,7 +48,7 @@ async def _search_web_impl(
     provider = providers[engine]()
     return await provider.search(query, results, rate_limit)
 
-@agent.tool_plain
+# @agent.tool_plain
 async def search_web(query: str) -> List[str]:
     """Search the web for information.
     
