@@ -126,7 +126,7 @@ async def process_row(
             
             # Get extraction config options if provided
             extraction_config = config.get("extraction", {})
-            urls_with_content = await _visit_webpages_impl(
+            raw_results = await _visit_webpages_impl(
                 urls=urls,
                 max_workers=extraction_config.get("max_workers", 10),
                 timeout=extraction_config.get("timeout", 30)
@@ -137,7 +137,7 @@ async def process_row(
             no_content_urls = []
             attempted_urls = set(urls)
             
-            for url, content in urls_with_content:
+            for url, content in raw_results:
                 if content and content.strip():
                     used_urls.append(url)
                     attempted_urls.remove(url)
@@ -162,7 +162,7 @@ async def process_row(
                 sources_summary.extend(attempted_urls)
             
             # Filter out URLs with no content for the prompt
-            valid_urls = [(url, content) for url, content in urls_with_content if content and content.strip()]
+            valid_urls = [(url, content) for url, content in raw_results if content and content.strip()]
             
             prompt_user = config["prompt"]["user"]
             

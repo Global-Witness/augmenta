@@ -91,7 +91,7 @@ async def _visit_webpages_impl(
         raise ExtractionError(f"Failed to process URLs: {str(e)}")
 
 # AI agent interface
-async def visit_webpages(urls: Sequence[str]) -> List[tuple[str, Optional[str]]]:
+async def visit_webpages(urls: Sequence[str]) -> str:
     """Visit webpages and extract their main content as markdown.
     
     This function processes multiple URLs and attempts to extract their main content
@@ -102,20 +102,40 @@ async def visit_webpages(urls: Sequence[str]) -> List[tuple[str, Optional[str]]]
         urls: A sequence of URLs to process
         
     Returns:
-        A list of tuples containing (url, content) pairs. Content will be None
-        for failed extractions.
+        A markdown formatted string containing the extracted content from each URL,
+        with headers and separators between different sources.
         
     Example:
         >>> urls = ["https://example.com", "https://example.org"]
         >>> results = await visit_webpages(urls)
-        >>> for url, content in results:
-        ...     if content:
-        ...         print(f"Successfully extracted content from {url}")
+        >>> print(results)
+        # Content from https://example.com
+        
+        Main content: here...
+        
+        ---
+        # Content from https://example.org
+        
+        More content here...
     """
-    return await _visit_webpages_impl(
+    results = await _visit_webpages_impl(
         urls=urls,
         max_workers=DEFAULT_MAX_WORKERS,
         timeout=DEFAULT_TIMEOUT
     )
+    
+    # Format results as markdown
+    formatted_sections = []
+    for url, content in results:
+        if content:
+            formatted_sections.extend([
+                f"# Content from {url}",
+                "",
+                content.strip(),
+                "",
+                "---"
+            ])
+    
+    return "\n".join(formatted_sections[:-1] if formatted_sections else ["No content extracted"])
 
 __all__ = ['visit_webpages', 'ExtractionError']
