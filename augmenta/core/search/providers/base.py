@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 import httpx
 import logging
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
-from augmenta.core.rate_limit.limiter import RateLimitManager
+from augmenta.utils.limiter import RateLimitManager
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class SearchProvider(ABC):
         logger.debug(f"Making {method} request to {url}")
         
         # Default to 2 seconds between requests when rate_limit is None
-        rate_limit = 2.0 if self.rate_limit is None else self.rate_limit
+        rate_limit = 0 if self.rate_limit is None else self.rate_limit
         
         async with RateLimitManager.acquire(
             self.__class__.__name__,

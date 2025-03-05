@@ -1,7 +1,7 @@
 from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
 from .llm_client import LLMClient
-from augmenta.core.rate_limit.limiter import RateLimitManager
+from augmenta.utils.limiter import RateLimitManager
 
 async def make_request_llm(
     prompt_system: str,

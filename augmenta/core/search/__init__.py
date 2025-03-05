@@ -5,7 +5,8 @@ from .providers import (
     BraveSearchProvider,
     GoogleSearchProvider,
     DuckDuckGoSearchProvider,
-    OxylabsSearchProvider
+    OxylabsSearchProvider,
+    BrightDataSearchProvider
 )
 
 async def search_web(
@@ -37,5 +38,6 @@ __all__ = [
     'BraveSearchProvider',
     'GoogleSearchProvider',
     'DuckDuckGoSearchProvider',
-    'OxylabsSearchProvider'
+    'OxylabsSearchProvider',
+    'BrightDataSearchProvider'
 ]

@@ -26,13 +26,13 @@ For the purposes of this example, we'll only keep the columns that contain infor
 ```{r}
 #| output: false
 donations <- donations_raw |>
-  slice_sample(n = 10) |>
-  select(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber, Value) |>
-  mutate(Value = parse_number(Value)) |>
-  # remove duplicate rows
-  group_by(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber) |>
-  summarise(Value = sum(Value)) |>
-  ungroup()
+    slice_sample(n = 10) |>
+    select(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber, Value) |>
+    mutate(Value = parse_number(Value)) |>
+    # remove duplicate rows
+    group_by(RegulatedEntityName, DonorName, DonorStatus, CompanyRegistrationNumber) |>
+    summarise(Value = sum(Value)) |>
+    ungroup()
 ```
 
 Finally, let's save this data as a CSV file.
@@ -171,9 +171,9 @@ This should take a few seconds. Once it's done, you'll have a new file called `d
 library(gt)
 
 read_csv("data/donations_classified.csv") |>
-  select(-DonorStatus, -CompanyRegistrationNumber) |>
-  gt() |>
-  fmt_markdown(columns = "explanation")
+    select(-DonorStatus, -CompanyRegistrationNumber) |>
+    gt() |>
+    fmt_markdown(columns = "explanation")
 ```
 
 ## Results

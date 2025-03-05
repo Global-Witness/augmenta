@@ -1,0 +1,98 @@
+---
+title: "Oil and gas environmental backtracking"
+format: gfm
+---
+
+Donald Trump's win of the 2024 presidential elections has given the oil and gas industry a licence to backtrack on their environmental commitments. Let's investigate the extent of this phenomenon.
+
+## Data prep
+
+```{r}
+#| output: false
+library(tidyverse)
+```
+
+We'll get a list of active oil and gas producecers headquarted in the US from Rystad Energy. Here's the CubeScript:
+
+```
+CUBESCRIPT(UCube) Report
+S(TabName:[Data Values], Year;)
+F(Headquarter Country:United States Minor Outlying Islands,United States;Year:"2025 - 2050")
+C(Data Values)
+R(Company)
+V(Production:kbbl/d."Base unit bbl")
+```
+
+Now let's read that data in.
+
+```{r}
+#| output: false
+producers <- read_csv("data/us_producers.csv")
+```
+
+Let's remove really small producers. For now, we'll just take a random sample of 10 producers to speed things up.
+
+```{r}
+#| output: false
+producers |>
+    filter(Sum > 10) |>
+    slice_sample(n = 10) |>
+    write_csv("data/us_producers_sample.csv")
+```
+
+## Augmentation
+
+There are `nrow(producers) |> scales::comma()` producers in the dataset. We could research each one of them individually, but that would take far too long. Instead, we'll use Augmenta to see if they've made any recent announcements.
+
+## Setup
+
+As usual, we need to configure our project. Create a new directory for you project. In it, create a file called `config.yaml`. You can see the contents of the file [here](/config.yaml).
+
+Because we're using Brave and an OpenAI model, we need API keys for both services. Save them to a file called `.env` in the root of your project directory:
+
+```
+BRAVE_API_KEY=YOUR_KEY_GOES_HERE
+OPENAI_API_KEY=YOUR_KEY_GOES_HERE
+```
+
+## Running the augmentation
+
+Make sure you have `augmenta` [installed](https://github.com/Global-Witness/augmenta/tree/main?tab=readme-ov-file#installation), open the terminal and navigate to the directory where you saved the data, configuration file and API keys.
+
+Run the following command to start the classification.
+
+```bash
+augmenta config.yaml
+```
+
+This should take a few seconds. Once it's done, you'll have a new file called `data/donations_classified.csv` with the augmented data.
+
+```{r}
+library(gt)
+
+read_csv("data/donations_classified.csv") |>
+    select(-DonorStatus, -CompanyRegistrationNumber) |>
+    gt() |>
+    fmt_markdown(columns = "explanation")
+```
+
+## Results
+
+There are a few things to note here.
+
+First, the results are only as good [as the information they're fed](https://en.wikipedia.org/wiki/Garbage_in%2C_garbage_out). Google search results tend to be better than those offered by Brave or Duckduckgo, but they're not perfect either.
+
+This is particularly an issue with individuals with generic names. We have instructed the model to flag those cases as "Don't know", but it can still lead to some issues.
+
+For example, the "Robert H Miall" identified in the search results has passed away in 2011 (as noted by the LLM itself), so he can't be the donor we're looking for (the donations are from 2024).
+
+We can work around these limitations in a few ways:
+
+- Increase the number of results to get a better picture of the donor.
+- Use a better search engine and/or more specific search query.
+- Be more descriptive about these edge cases in the prompt and examples.
+- Filter out individual donors and stick to organisations.
+
+For organisations, which tend to be easier to identify, the model does a much better job.
+
+If we were to publish any analysis of this data, we would need to fact-check the results.

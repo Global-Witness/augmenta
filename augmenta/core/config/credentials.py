@@ -12,7 +12,14 @@ class CredentialsManager:
         'brave': {'BRAVE_API_KEY'},
         'google': {'GOOGLE_API_KEY', 'GOOGLE_CX'},
         'oxylabs_google': {'OXYLABS_USERNAME', 'OXYLABS_PASSWORD'},
-        'oxylabs_bing': {'OXYLABS_USERNAME', 'OXYLABS_PASSWORD'}
+        'oxylabs_bing': {'OXYLABS_USERNAME', 'OXYLABS_PASSWORD'},
+        'bright_data_google': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_bing': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_duckduckgo': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_yandex': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_baidu': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_yahoo': {'BRIGHT_DATA_API_KEY'},
+        'bright_data_naver': {'BRIGHT_DATA_API_KEY'}
     }
     
     def __init__(self, load_env: bool = True) -> None:

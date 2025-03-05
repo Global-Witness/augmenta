@@ -6,7 +6,6 @@ model:
 query_col: DonorName
 search:
   engine: brave
-  country: GB
   results: 10
   rate_limit: 2
 prompt:

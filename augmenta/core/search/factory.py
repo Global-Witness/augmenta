@@ -4,6 +4,7 @@ from .providers.brave import BraveSearchProvider
 from .providers.google import GoogleSearchProvider
 from .providers.duckduckgo import DuckDuckGoSearchProvider
 from .providers.oxylabs import OxylabsSearchProvider
+from .providers.bright_data import BrightDataSearchProvider
 
 ProviderCreator = Callable[[dict[str, str], Dict[str, Any]], SearchProvider]
 
@@ -36,6 +37,42 @@ class SearchProviderFactory:
             creds.get("OXYLABS_USERNAME"),
             creds.get("OXYLABS_PASSWORD"),
             "bing",
+            **params
+        ),
+        # Bright Data Providers
+        "bright_data_google": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_bing": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_duckduckgo": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_yandex": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_baidu": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_yahoo": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
+            **params
+        ),
+        "bright_data_naver": lambda creds, params: BrightDataSearchProvider(
+            creds.get("BRIGHT_DATA_API_KEY"),
+            zone="augmenta",
             **params
         )
     }

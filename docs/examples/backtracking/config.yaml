@@ -1,0 +1,46 @@
+input_csv: data/us_producers_sample.csv
+output_csv: data/us_producers_backtracking.csv
+model:
+  name: openai/gpt-4o-mini
+  max_tokens: 20000
+query_col: Company
+search:
+  engine: brave
+  country: US
+  freshness: 2024-11-01to2025-03-01
+  results: 10
+  rate_limit: 2
+prompt:
+  system: You are an expert researcher who excels at reading and understanding news reports.
+  user: |
+    # Instructions
+
+    The following documents are web search results about {{Company}}, a US-based oil and gas producer. Your task is to read the documents and determine if {{Company}} has backtracked on any environemntal commitments it has previously made. These could be related to reducing emissions, reducing investments in renewable energy, or any other environmental commitments.
+
+    Be clever and critical, use common sense, and don't allow yourself to be greenwashed. A company may say they are reducing emissions, but in reality,
+structure:
+  chain_of_thought:
+    type: str
+    description: Explain what your task is. Think of what you need to do and what you need to look for in the documents. Consider potential issues that may lead to you not completing the task accurately. Once you have a clear idea of what you need to do, explain whether you believe the company has backtracked on any environmental commitments.
+  backtracked:
+    type: bool
+    description: Has this company backtracked on any environmental commitments?
+  evidence:
+    type: str
+    description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Always include at least one inline URL.
+  confidence:
+    type: int
+    description: Your confidence level in the decision, on a scale of 1 (lowest) to 10 (highest). If you don't have enough information or the documents refer to different organisations that may share a name, please set this to 1.
+examples:
+  - input: BP
+    output:
+      backtracked: true
+      evidence: |
+        [According to Global Witness](https://globalwitness.org/en/campaigns/fossil-fuels/global-witness-billboards-highlight-bps-climate-backtracking-to-investors/), BP CEO Murray Auchincloss has hinted that the firm's "fundamental reset" will mean less investment in renewables, and more spending on oil and gas. However, no announcement has been formally made yet.
+      confidence: 5
+  - input: Shell
+    output:
+      backtracked: true
+      evidence: |
+        In its Energy Transition Strategy 2024 (ETS24), Shell 'watered down' ([CNN](https://www.cnn.com/2024/03/14/climate/shell-carbon-emissions-targets-climate/index.html), [Fortune](https://fortune.com/europe/2024/03/14/shell-waters-down-its-2030-carbon-reduction-target-but-still-aims-to-reach-net-zero-by-2050/)) and 'weakens' ([Reuters](https://www.reuters.com/sustainability/climate-energy/shell-loosens-2030-carbon-emissions-target-2024-03-14/), [Bloomberg](https://www.bloomberg.com/news/articles/2024-05-21/shell-investors-back-weaker-emissions-targets-at-annual-meeting)) its emissions reduction targets.
+      confidence: 9
