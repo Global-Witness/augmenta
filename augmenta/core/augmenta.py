@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, Callable, Set
 from dataclasses import dataclass
 
-from augmenta.core.search import search_web
+from augmenta.core.search import _search_web_impl
 from augmenta.core.extractors import extract_urls
 from augmenta.core.prompt import format_docs, format_examples
 from augmenta.core.llm import make_request_llm, LLMClient
@@ -63,16 +63,15 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        urls = await search_web(
+        urls = await _search_web_impl(
             query=query,
             results=config["search"]["results"],
             engine=config["search"]["engine"],
             rate_limit=config["search"].get("rate_limit"),
             credentials=credentials,
-            search_config=config["search"]  # Pass the entire search config
+            search_config=config["search"]
         )
         
-        # Track URL processing results
         urls_with_content = await extract_urls(urls)
         
         # Categorize URLs

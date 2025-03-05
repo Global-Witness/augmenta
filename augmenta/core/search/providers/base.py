@@ -45,8 +45,8 @@ class SearchProvider(ABC):
         pass
 
     async def search(self, query: str, results: int, rate_limit: Optional[float] = None) -> List[str]:
-        """Execute search with rate limiting."""
-        rate_limit = 0 if rate_limit is None else rate_limit
-        
-        async with RateLimitManager.acquire(self.__class__.__name__, rate_limit=rate_limit):
-            return await self._search_implementation(query, results)
+        """Execute search with optional rate limiting."""
+        if rate_limit is not None and rate_limit > 0:
+            async with RateLimitManager.acquire(self.__class__.__name__, rate_limit=rate_limit):
+                return await self._search_implementation(query, results)
+        return await self._search_implementation(query, results)

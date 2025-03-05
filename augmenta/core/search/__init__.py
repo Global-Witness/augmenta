@@ -1,33 +1,33 @@
 from typing import List, Literal, Dict, Any, Optional
+from pydantic_ai import Agent
 from .providers import (
     BraveSearchProvider,
     GoogleSearchProvider,
     DuckDuckGoSearchProvider
 )
 
-EngineType = Literal["brave", "google", "duckduckgo"]
+# Default configuration for AI agent use
+DEFAULT_ENGINE: Literal["brave", "google", "duckduckgo"] = "brave"
+DEFAULT_RESULTS = 5
 
-async def search_web(
+# Credentials should be configured via environment variables or settings
+CREDENTIALS: Dict[str, str] = {
+    "BRAVE_API_KEY": None,
+    "GOOGLE_API_KEY": None,
+    "GOOGLE_CX": None
+}
+
+agent = Agent()
+
+async def _search_web_impl(
     query: str,
     results: int,
-    engine: EngineType,
+    engine: Literal["brave", "google", "duckduckgo"],
     credentials: dict[str, str],
     rate_limit: Optional[float] = None,
     search_config: Optional[Dict[str, Any]] = None
 ) -> List[str]:
-    """Execute a web search using the specified engine.
-    
-    Args:
-        query: Search query string
-        results: Number of results to return
-        engine: Search engine to use ("brave", "google", "duckduckgo")
-        credentials: API keys and other credentials needed by the engine
-        rate_limit: Optional rate limit in seconds between requests
-        search_config: Optional additional configuration (not used currently)
-        
-    Returns:
-        List of result URLs
-    """
+    """Internal implementation of web search with full configuration."""
     if not query.strip():
         raise ValueError("Search query cannot be empty")
     
@@ -51,4 +51,29 @@ async def search_web(
     provider = providers[engine]()
     return await provider.search(query, results, rate_limit)
 
-__all__ = ['search_web']
+@agent.tool_plain
+async def search_web(query: str) -> List[str]:
+    """Search the web for information.
+    
+    Performs a web search using the configured search engine and returns a list of relevant URLs.
+    
+    Args:
+        query: The search query string. This should be a specific question or topic
+               that you want to find information about.
+               
+    Returns:
+        A list of URLs containing relevant information for the query.
+        
+    Example:
+        >>> await search_web("latest developments in quantum computing")
+        ['https://example.com/quantum-news', 'https://example.com/research']
+    """
+    return await _search_web_impl(
+        query=query,
+        results=DEFAULT_RESULTS,
+        engine=DEFAULT_ENGINE,
+        credentials=CREDENTIALS
+    )
+
+# For backward compatibility and programmatic use
+__all__ = ['search_web', '_search_web_impl']
