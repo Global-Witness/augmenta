@@ -228,9 +228,8 @@ async def process_augmenta(
     
     # Get credentials based on configured search engine
     engine = config_data["search"]["engine"]
-    # Initialize credentials manager with config file directory
-    config_dir = Path(config_path).parent
-    credentials_manager = CredentialsManager(config_dir=config_dir)
+    # Initialize credentials manager
+    credentials_manager = CredentialsManager()
     try:
         from augmenta.core.search.providers import PROVIDERS
         required_credentials = PROVIDERS[engine].required_credentials

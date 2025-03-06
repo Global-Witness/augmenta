@@ -9,19 +9,14 @@ import logging
 class CredentialsManager:
     """Manages API credentials and keys for various services."""
     
-    def __init__(self, config_dir: Optional[Path] = None) -> None:
-        """Initialize the credentials manager.
-        
-        Args:
-            config_dir: Directory containing the config file, used to locate .env
-        """
-        if config_dir:
-            env_path = config_dir / '.env'
-            if env_path.exists():
-                load_dotenv(env_path)
-                logging.info(f"Loaded .env from: {env_path}")
-            else:
-                logging.warning(f"No .env file found in {config_dir}")
+    def __init__(self) -> None:
+        """Initialize the credentials manager."""
+        env_path = Path(os.getcwd()) / '.env'
+        if env_path.exists():
+            load_dotenv(env_path)
+            logging.info(f"Loaded .env from: {env_path}")
+        else:
+            logging.warning(f"No .env file found in {env_path.parent}")
 
     def get_credentials(self, required_keys: Set[str]) -> Dict[str, str]:
         """Get and validate credentials from environment or config.

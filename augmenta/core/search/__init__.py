@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Default configuration for AI agent use
-DEFAULT_ENGINE: Literal["brave", "google", "duckduckgo", "oxylabs_google"] = "brave"
+DEFAULT_ENGINE: Literal["brave", "google", "duckduckgo", "oxylabs_google"] = "duckduckgo"
 DEFAULT_RESULTS = 20
 
 _credentials_manager = CredentialsManager()
@@ -20,7 +20,6 @@ async def _search_web_impl(
     search_config: Optional[Dict[str, Any]] = None
 ) -> List[Dict[str, str]]:
     """Internal implementation of web search with full configuration."""
-    print(f"_search_web_impl: engine={engine}, credentials={credentials}")
     if not query.strip():
         raise ValueError("Search query cannot be empty")
     
@@ -54,7 +53,6 @@ async def search_web(query: str, engine: Optional[str] = None) -> str:
         '## Search Results\n\n[Title](url)\nDescription'
     """
     current_engine = engine or DEFAULT_ENGINE
-    print(f"search_web: using engine={current_engine}")
     try:
         credentials = _credentials_manager.get_credentials(
             PROVIDERS[current_engine].required_credentials
@@ -74,7 +72,6 @@ async def search_web(query: str, engine: Optional[str] = None) -> str:
         engine=current_engine,
         credentials=credentials,
     )
-    print(f"search_web: got {len(results)} results")
     
     markdown_results = [f"[{r['title']}]({r['url']})\n{r['description']}" for r in results]
     return "## Search Results\n\n" + "\n\n".join(markdown_results)
