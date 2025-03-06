@@ -12,13 +12,14 @@ class WebResearchAgent(BaseAgent):
     """An autonomous agent capable of web research through tools."""
     
     def __init__(
-        self, 
+        self,
         model: str,
         temperature: float = 0.0,
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyze web pages."
+        system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyze web pages.",
+        search_config: Optional[dict] = None
     ):
         """Initialize the web research agent.
         
@@ -38,6 +39,7 @@ class WebResearchAgent(BaseAgent):
             verbose=verbose
         )
         self.system_prompt = system_prompt
+        self.search_config = search_config or {}
         self.register_tools()
         
     def register_tools(self):
@@ -55,7 +57,8 @@ class WebResearchAgent(BaseAgent):
             Returns:
                 Markdown formatted search results with titles and descriptions
             """
-            return await search_web_impl(query)
+            engine = self.search_config.get('engine')
+            return await search_web_impl(query, engine=engine)
             
         @self.agent.tool_plain
         async def visit_webpages(urls: List[str]) -> List[Tuple[str, Optional[str]]]:

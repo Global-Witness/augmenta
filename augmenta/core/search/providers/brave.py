@@ -4,11 +4,12 @@ from .base import SearchProvider
 class BraveSearchProvider(SearchProvider):
     """Brave Search API provider."""
     
+    required_credentials = {'BRAVE_API_KEY'}
     BASE_URL = "https://api.search.brave.com/res/v1/web/search"
     
-    def __init__(self, api_key: str | None):
-        super().__init__()
-        self.api_key = api_key
+    def __init__(self, credentials: Dict[str, str]):
+        super().__init__(credentials)
+        self.api_key = credentials.get('BRAVE_API_KEY')
 
     async def _search_implementation(self, query: str, results: int) -> List[Dict[str, str]]:
         """Execute search and return list of result URLs."""

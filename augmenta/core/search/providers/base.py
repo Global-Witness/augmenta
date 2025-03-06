@@ -1,5 +1,5 @@
-from abc import ABC, abstractmethod
-from typing import Optional, List, Dict
+from abc import ABC, abstractmethod, abstractproperty
+from typing import Optional, List, Dict, Set, ClassVar, Dict, Any
 import httpx
 import logging
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
@@ -9,10 +9,27 @@ logger = logging.getLogger(__name__)
 
 class SearchProvider(ABC):
     """Base search provider with common functionality."""
-    
-    def __init__(self):
-        """Initialize search provider."""
+
+    required_credentials: ClassVar[Set[str]] = set()
+
+    def __init__(self, credentials: Dict[str, str]):
+        """Initialize search provider.
+        
+        Args:
+            credentials: Dictionary of credential key-value pairs
+        """
         logger.debug(f"Initialized {self.__class__.__name__}")
+        self._init_credentials(credentials)
+
+    def _init_credentials(self, credentials: Dict[str, str]) -> None:
+        """Initialize provider with required credentials.
+        
+        Args:
+            credentials: Dictionary of credential key-value pairs
+        """
+        missing = self.required_credentials - credentials.keys()
+        if missing:
+            raise ValueError(f"Missing required credentials: {missing}")
 
     @staticmethod
     def _normalize_url(url: str) -> str:
