@@ -1,17 +1,18 @@
-from typing import List
+from typing import List, Dict
 from .base import SearchProvider
 
 class GoogleSearchProvider(SearchProvider):
     """Google Custom Search API provider."""
     
+    required_credentials = {'GOOGLE_API_KEY', 'GOOGLE_CX'}
     BASE_URL = "https://customsearch.googleapis.com/customsearch/v1"
     
-    def __init__(self, api_key: str | None, cx: str | None):
-        super().__init__()
-        self.api_key = api_key
-        self.cx = cx
+    def __init__(self, credentials: Dict[str, str]):
+        super().__init__(credentials)
+        self.api_key = credentials.get('GOOGLE_API_KEY')
+        self.cx = credentials.get('GOOGLE_CX')
 
-    async def _search_implementation(self, query: str, results: int) -> List[str]:
+    async def _search_implementation(self, query: str, results: int) -> List[Dict[str, str]]:
         """Execute search and return list of result URLs."""
         if not self.api_key or not self.cx:
             return []
@@ -38,4 +39,10 @@ class GoogleSearchProvider(SearchProvider):
             return []
             
         items = response_data.get("items", [])
-        return [self._normalize_url(item["link"]) for item in items]
+        return [
+            {
+                "url": self._normalize_url(item["link"]),
+                "title": item.get("title", ""),
+                "description": item.get("snippet", "")
+            }
+            for item in items]

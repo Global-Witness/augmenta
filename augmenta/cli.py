@@ -43,6 +43,14 @@ class ScrapeFilter(logging.Filter):
 
 def configure_logging(verbose: bool = False):
     """Configure logging based on verbosity level."""
+    if verbose:
+        try:
+            import logfire
+            logfire.configure()
+            logfire.instrument_httpx(capture_all=True)
+        except ImportError:
+            print("Please install `pip install 'logfire[httpx]'` to see the logs in logfire.")
+    
     # Create handlers
     console_handler = logging.StreamHandler()
     console_handler.addFilter(ScrapeFilter(verbose))

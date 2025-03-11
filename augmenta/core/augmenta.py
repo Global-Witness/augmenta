@@ -94,6 +94,7 @@ async def process_row(
             agent = WebResearchAgent(
                 model=model_id,
                 verbose=verbose,
+                search_config=config["search"],
                 **model_settings
             )
             
@@ -225,8 +226,18 @@ async def process_augmenta(
     
     validate_config(config_data)
     
+    # Get credentials based on configured search engine
+    engine = config_data["search"]["engine"]
+    # Initialize credentials manager
     credentials_manager = CredentialsManager()
-    credentials = credentials_manager.get_credentials(config_data)
+    try:
+        from augmenta.core.search.providers import PROVIDERS
+        required_credentials = PROVIDERS[engine].required_credentials
+        credentials = credentials_manager.get_credentials(required_credentials)
+    except KeyError as e:
+        raise AugmentaError(f"Unsupported search engine: {engine}")
+    except ValueError as e:
+        raise AugmentaError(f"Credentials error: {str(e)}")
     
     df = pd.read_csv(config_data["input_csv"])
     if config_data["query_col"] not in df.columns:

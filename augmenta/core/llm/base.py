@@ -6,14 +6,6 @@ from pydantic import BaseModel, Field, create_model
 from pydantic_ai import Agent
 from pydantic_ai.usage import UsageLimits
 
-try:
-    import logfire
-    logfire.configure()
-    logfire.instrument_httpx(capture_all=True)
-    HAS_LOGFIRE = True
-except ImportError:
-    HAS_LOGFIRE = False
-
 logger = logging.getLogger(__name__)
 
 class BaseAgent:

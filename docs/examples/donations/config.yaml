@@ -7,7 +7,7 @@ model:
   name: gpt-4o-mini
 query_col: DonorName
 search:
-  engine: brave
+  engine: oxylabs_google
   results: 10
   rate_limit: 2
 prompt:
@@ -15,13 +15,19 @@ prompt:
   user: |
     # Instructions
 
-    Search the web for "{{DonorName}}", a political donor. Your task is to determine what industry {{DonorName}} belongs to. The documents could be about a company, a trade group, a union, an individual, etc.
+    Your job is to research "{{DonorName}}", a donor to a political party in the UK. Your will determine what industry {{DonorName}} belongs to. The entity could be a company, a trade group, a union, an individual, etc.
     
     If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
 
     We also know that the donor is a {{DonorStatus}}.
 
-    Use the information provided in the search results to make your decision. Be critical, use common sense and respond only in English. Search for {{DonorStatus}} first, and only expand your search if you feel it's needed. Limit yourself to two-three searches at most. Now, please proceed with your analysis and classification of {{DonorName}}.    
+    ## Searching guidelines
+
+    In most cases, you should start by searching for {{DonorName}} without any additional parameters. Where relevant, remove redundant words like "company", "limited", "plc", etc from the search query. If you need to perform another search, try to refine it by adding relevant keywords like "industry", "job", "company", etc. Note that each case will be different, so be flexible and adaptable. Unless necessary, limit your research to two or three searches.
+
+    With each search, select a few sources that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
+    
+    Now, please proceed with your analysis and classification of {{DonorName}}.    
 structure:
   chain_of_thought:
     type: str
@@ -56,6 +62,9 @@ structure:
   explanation:
     type: str
     description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
+  sufficient_research:
+    type: bool
+    description: Have you analysed a sufficient number of search results to make an informed decision? Were the sources you found reliable and relevant?
   confidence:
     type: int
     description: Your confidence level in the decision, on a scale of 1 (lowest) to 10 (highest). If you don't have enough information or the documents refer to different organisations that may share a name, please set this to 1.
