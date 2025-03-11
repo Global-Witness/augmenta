@@ -46,7 +46,7 @@ def configure_logging(verbose: bool = False):
     if verbose:
         try:
             import logfire
-            logfire.configure()
+            logfire.configure(scrubbing=False)
             logfire.instrument_httpx(capture_all=True)
         except ImportError:
             print("Please install `pip install 'logfire[httpx]'` to see the logs in logfire.")

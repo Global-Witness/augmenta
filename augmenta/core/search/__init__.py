@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Default configuration for AI agent use
-DEFAULT_ENGINE: Literal["brave", "google", "duckduckgo", "oxylabs_google"] = "duckduckgo"
+DEFAULT_ENGINE: Literal["brave", "google", "duckduckgo", "oxylabs_google", "brightdata_google"] = "duckduckgo"
 DEFAULT_RESULTS = 20
 
 _credentials_manager = CredentialsManager()
@@ -14,7 +14,7 @@ _credentials_manager = CredentialsManager()
 async def _search_web_impl(
     query: str,
     results: int,
-    engine: Literal["brave", "google", "duckduckgo", "oxylabs_google"],
+    engine: Literal["brave", "google", "duckduckgo", "oxylabs_google", "brightdata_google"],
     credentials: dict[str, str],
     rate_limit: Optional[float] = None,
     search_config: Optional[Dict[str, Any]] = None
