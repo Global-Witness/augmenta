@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Optional, List, Dict, Set, ClassVar, Dict, Any
 import httpx
-import logging
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 from augmenta.utils.limiter import RateLimitManager
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class SearchProvider(ABC):

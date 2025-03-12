@@ -1,8 +1,11 @@
 from typing import Optional
-import logging
 from trafilatura import extract
 from trafilatura.settings import use_config
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class TrafilaturaProvider:

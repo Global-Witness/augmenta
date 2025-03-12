@@ -1,7 +1,6 @@
 """Database operations for the cache system."""
 
 import sqlite3
-import logging
 from contextlib import contextmanager
 from typing import Generator
 from pathlib import Path
@@ -9,6 +8,10 @@ from datetime import datetime
 
 from augmenta.utils.exceptions import DatabaseError
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class DatabaseConnection:

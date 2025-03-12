@@ -1,4 +1,3 @@
-import logging
 import asyncio
 from typing import Optional
 import sys
@@ -12,6 +11,10 @@ from playwright.async_api import (
     BrowserContext
 )
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class PlaywrightProvider:

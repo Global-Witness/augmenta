@@ -2,7 +2,10 @@ from typing import List, Literal, Dict, Any, Optional, Set
 from augmenta.core.config.credentials import CredentialsManager
 from .providers import PROVIDERS, create_provider
 
+# logging
 import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 # Default configuration for AI agent use
@@ -26,6 +29,8 @@ async def _search_web_impl(
     if results < 1:
         raise ValueError("Results count must be positive")
     
+    logger.info(f"Trying to search for: {query}")
+
     try:
         provider = create_provider(engine, credentials)
     except ValueError as e:
