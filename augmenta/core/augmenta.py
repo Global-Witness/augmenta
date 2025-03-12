@@ -2,7 +2,6 @@
 
 import yaml
 import json
-import logging
 import asyncio
 import pandas as pd
 from pathlib import Path
@@ -17,8 +16,7 @@ from augmenta.core.llm.agent import WebResearchAgent
 from augmenta.core.cache import CacheManager
 from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
-
-logger = logging.getLogger(__name__)
+from augmenta.utils.logging import create_row_span, info, error, warning
 
 REQUIRED_CONFIG_FIELDS: Set[str] = {
     "input_csv",
@@ -81,9 +79,12 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        # Get model settings from config
-        model_settings = get_model_settings(config)
-        model_id = f"{config['model']['provider']}:{config['model']['name']}"
+        with create_row_span(query, row_index=index) as span:
+            info(f"Starting processing for query: {query}", row_index=index)
+            
+            # Get model settings from config
+            model_settings = get_model_settings(config)
+            model_id = f"{config['model']['provider']}:{config['model']['name']}"
         
         # Check if agent mode is enabled
         agent_config = config.get("agent", {})
@@ -204,7 +205,7 @@ async def process_row(
         return ProcessingResult(index=index, data=response)
         
     except Exception as e:
-        logger.error(f"Error processing row {index}: {str(e)}", exc_info=True)
+        error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
         return ProcessingResult(index=index, data=None, error=str(e))
 
 async def process_augmenta(
