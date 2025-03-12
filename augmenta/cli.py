@@ -10,7 +10,7 @@ from colorama import Fore, Style, init
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
-from augmenta.utils.logging import configure_logging
+import logfire
 
 # Initialize colorama
 init()
@@ -72,7 +72,9 @@ def main(
         console.print_banner()
         
         # Configure logging based on verbosity
-        configure_logging(verbose)
+        if verbose:
+            logfire.configure(scrubbing=False)
+            logfire.instrument_httpx(capture_all=True)
 
         if clean_cache:
             handle_cache_cleanup()

@@ -16,7 +16,7 @@ from augmenta.core.llm.agent import WebResearchAgent
 from augmenta.core.cache import CacheManager
 from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
-from augmenta.utils.logging import create_row_span, info, error, warning
+import logfire
 
 REQUIRED_CONFIG_FIELDS: Set[str] = {
     "input_csv",
@@ -79,8 +79,8 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        with create_row_span(query, row_index=index) as span:
-            info(f"Starting processing for query: {query}", row_index=index)
+        with logfire.span(f"Processing row: {query}", row_index=index) as span:
+            logfire.info(f"Starting processing for query: {query}", row_index=index)
             
             # Get model settings from config
             model_settings = get_model_settings(config)
@@ -205,7 +205,7 @@ async def process_row(
         return ProcessingResult(index=index, data=response)
         
     except Exception as e:
-        error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
+        logfire.error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
         return ProcessingResult(index=index, data=None, error=str(e))
 
 async def process_augmenta(
@@ -276,19 +276,22 @@ async def process_augmenta(
         processed += 1
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
+    # Create a semaphore to limit concurrent tasks
+    semaphore = asyncio.Semaphore(10)
 
-    tasks = [
-        process_row(
-            row_data=row,
-            config=config_data,
-            credentials=credentials,
-            cache_manager=cache_manager,
-            process_id=process_id,
-            progress_callback=update_progress,
-            verbose=verbose
-        ) for row in rows_to_process
-    ]
-    
+    async def process_with_limit(row):
+        async with semaphore:
+            return await process_row(
+                row_data=row,
+                config=config_data,
+                credentials=credentials,
+                cache_manager=cache_manager,
+                process_id=process_id,
+                progress_callback=update_progress,
+                verbose=verbose
+            )
+
+    tasks = [process_with_limit(row) for row in rows_to_process]
     results = await asyncio.gather(*tasks)
 
     for result in results:
