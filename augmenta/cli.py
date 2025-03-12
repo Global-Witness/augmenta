@@ -74,7 +74,10 @@ def main(
         # Configure logging based on verbosity
         if verbose:
             logfire.configure(scrubbing=False)
+            
             logfire.instrument_httpx(capture_all=True)
+            # logfire.instrument_pydantic()
+            logfire.instrument_aiohttp_client()
 
         if clean_cache:
             handle_cache_cleanup()

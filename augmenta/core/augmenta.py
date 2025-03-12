@@ -79,12 +79,9 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        with logfire.span(f"Processing row: {query}", row_index=index) as span:
-            logfire.info(f"Starting processing for query: {query}", row_index=index)
-            
-            # Get model settings from config
-            model_settings = get_model_settings(config)
-            model_id = f"{config['model']['provider']}:{config['model']['name']}"
+        # Get model settings from config
+        model_settings = get_model_settings(config)
+        model_id = f"{config['model']['provider']}:{config['model']['name']}"
         
         # Check if agent mode is enabled
         agent_config = config.get("agent", {})

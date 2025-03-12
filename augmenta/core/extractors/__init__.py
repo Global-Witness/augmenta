@@ -1,9 +1,13 @@
 from typing import List, Optional, Sequence, Protocol
 import asyncio
 import logging
+import logfire
 from dataclasses import dataclass
 
 from augmenta.utils.validators import is_valid_url
+
+logfire.configure()
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 
 logger = logging.getLogger(__name__)
 

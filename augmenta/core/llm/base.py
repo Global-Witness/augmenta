@@ -7,8 +7,7 @@ from pydantic_ai.usage import UsageLimits
 import logfire
 from pydantic_ai import Agent
 
-logfire.configure(scrubbing=False)
-# Instrument all PydanticAI agents with logfire
+# logfire.configure(scrubbing=False)
 Agent.instrument_all()
 
 class BaseAgent:
