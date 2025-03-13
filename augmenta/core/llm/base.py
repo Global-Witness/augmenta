@@ -1,12 +1,14 @@
 from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal
 from pathlib import Path
-import logging
 import yaml
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import Agent
 from pydantic_ai.usage import UsageLimits
+import logfire
+from pydantic_ai import Agent
 
-logger = logging.getLogger(__name__)
+# logfire.configure(scrubbing=False)
+Agent.instrument_all()
 
 class BaseAgent:
     """Base class providing core LLM functionality"""
@@ -123,14 +125,14 @@ class BaseAgent:
             result = await self.agent.run(
                 prompt_user,
                 result_type=response_format,
-                model_settings=model_settings,
-                usage_limits=UsageLimits(request_limit=5)
+                model_settings=model_settings
+                # usage_limits=UsageLimits(request_limit=5)
             )
 
             # Return the appropriate result format
             return result.data.model_dump() if response_format else result.data
         except Exception as e:
-            logger.error(f"LLM request failed: {e}")
+            logfire.error(f"LLM request failed: {e}")
             raise RuntimeError(f"LLM request failed: {e}")
 
 async def make_request_llm(

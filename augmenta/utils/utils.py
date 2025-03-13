@@ -2,12 +2,14 @@
 
 import json
 import hashlib
-import logging
 from pathlib import Path
 from typing import Union
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
-
 def get_hash(data: Union[dict, Path, str], chunk_size: int = 8192) -> str:
     """Generate a deterministic hash of data or file contents."""
     hasher = hashlib.sha256()

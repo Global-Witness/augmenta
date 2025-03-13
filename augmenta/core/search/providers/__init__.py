@@ -1,6 +1,7 @@
 from typing import Dict, Type
 from .base import SearchProvider
 from .brave import BraveSearchProvider
+from .brightdata import BrightDataSearchProvider
 from .oxylabs import OxylabsSearchProvider
 from .google import GoogleSearchProvider
 from .duckduckgo import DuckDuckGoSearchProvider
@@ -10,6 +11,7 @@ PROVIDERS: Dict[str, Type[SearchProvider]] = {
     "brave": BraveSearchProvider,
     "google": GoogleSearchProvider,
     "duckduckgo": DuckDuckGoSearchProvider,
+    "brightdata_google": BrightDataSearchProvider,
     "oxylabs_google": OxylabsSearchProvider
 }
 
@@ -21,6 +23,7 @@ def create_provider(name: str, credentials: Dict[str, str]) -> SearchProvider:
 __all__ = [
     'SearchProvider',
     'BraveSearchProvider',
+    'BrightDataSearchProvider',
     'OxylabsSearchProvider',
     'GoogleSearchProvider',
     'DuckDuckGoSearchProvider',

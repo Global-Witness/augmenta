@@ -1,8 +1,11 @@
-import logging
 import aiohttp
 from typing import Optional, Final
 from aiohttp import ClientTimeout, ClientError
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class HTTPProvider:

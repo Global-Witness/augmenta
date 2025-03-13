@@ -4,86 +4,16 @@ import click
 import os
 import asyncio
 import yaml
-import logging
 from typing import Dict, Any, Optional
 from colorama import Fore, Style, init
 
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
+import logfire
 
 # Initialize colorama
 init()
-
-class ScrapeFilter(logging.Filter):
-    """Filter out common scraping-related errors unless in verbose mode."""
-    
-    FILTERED_MESSAGES = [
-        'net::ERR_ABORTED',
-        'Target page, context or browser has been closed',
-        'TimeoutError',
-        'Navigation timeout',
-        'net::ERR_CONNECTION_TIMED_OUT',
-        'net::ERR_CONNECTION_REFUSED',
-        'Playwright timeout',
-        'Target closed',
-        'ERR_NAME_NOT_RESOLVED',
-    ]
-    
-    def __init__(self, verbose: bool = False):
-        super().__init__()
-        self.verbose = verbose
-    
-    def filter(self, record: logging.LogRecord) -> bool:
-        if self.verbose:
-            return True
-        
-        # Check if message contains any of the filtered phrases
-        return not any(msg in str(record.msg) for msg in self.FILTERED_MESSAGES)
-
-def configure_logging(verbose: bool = False):
-    """Configure logging based on verbosity level."""
-    if verbose:
-        try:
-            import logfire
-            logfire.configure()
-            logfire.instrument_httpx(capture_all=True)
-        except ImportError:
-            print("Please install `pip install 'logfire[httpx]'` to see the logs in logfire.")
-    
-    # Create handlers
-    console_handler = logging.StreamHandler()
-    console_handler.addFilter(ScrapeFilter(verbose))
-    
-    # Set format
-    formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
-    console_handler.setFormatter(formatter)
-    
-    # Configure root logger
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO if verbose else logging.WARNING)
-    
-    # Remove existing handlers and add our configured one
-    root_logger.handlers.clear()
-    root_logger.addHandler(console_handler)
-    
-    # Configure specific loggers
-    loggers = [
-        'trafilatura',
-        'trafilatura.core',
-        'augmenta.core.extractors',
-        'augmenta.core.extractors.trafilatura',
-        'playwright._impl._api_types',
-        'playwright._impl.connection',
-    ]
-    
-    for logger_name in loggers:
-        logger = logging.getLogger(logger_name)
-        logger.setLevel(logging.INFO if verbose else logging.CRITICAL)
-        # Prevent log propagation to avoid duplicate messages
-        logger.propagate = False
-        logger.handlers.clear()
-        logger.addHandler(console_handler)
 
 class ConsolePrinter:
     def __init__(self):
@@ -142,7 +72,12 @@ def main(
         console.print_banner()
         
         # Configure logging based on verbosity
-        configure_logging(verbose)
+        if verbose:
+            logfire.configure(scrubbing=False)
+            
+            logfire.instrument_httpx(capture_all=True)
+            # logfire.instrument_pydantic()
+            logfire.instrument_aiohttp_client()
 
         if clean_cache:
             handle_cache_cleanup()

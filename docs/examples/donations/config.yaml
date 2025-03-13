@@ -7,8 +7,8 @@ model:
   name: gpt-4o-mini
 query_col: DonorName
 search:
-  engine: oxylabs_google
-  results: 10
+  engine: brightdata_google
+  results: 20
   rate_limit: 2
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.

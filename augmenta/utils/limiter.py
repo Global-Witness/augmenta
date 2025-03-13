@@ -1,10 +1,13 @@
 """Rate limiting implementation using aiolimiter."""
 
-import logging
 from contextlib import asynccontextmanager
 from aiolimiter import AsyncLimiter
 from typing import Dict, Optional, ClassVar
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class RateLimitManager:

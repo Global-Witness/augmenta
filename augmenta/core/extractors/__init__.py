@@ -1,10 +1,13 @@
 from typing import List, Optional, Sequence, Protocol
 import asyncio
-import logging
 from dataclasses import dataclass
 
 from augmenta.utils.validators import is_valid_url
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 # Default configuration for AI agent use
@@ -65,23 +68,24 @@ async def _visit_webpages_impl(
     urls: Sequence[str],
     max_workers: int = DEFAULT_MAX_WORKERS,
     timeout: int = DEFAULT_TIMEOUT
-) -> List[tuple[str, Optional[str]]]:
+) -> List[tuple[str, Optional[str], Optional[str]]]:
     """Internal implementation of multiple webpage visits with full configuration."""
     if not urls:
         return []
     
     max_workers = min(max_workers, len(urls))
     
-    async def process_url(url: str) -> tuple[str, Optional[str]]:
+    async def process_url(url: str) -> tuple[str, Optional[str], Optional[str]]:
         try:
             text = await asyncio.wait_for(
                 _visit_webpage_impl(url),
                 timeout=timeout
             )
-            return url, text
-        except (asyncio.TimeoutError, Exception) as e:
-            logger.warning(f"Error processing {url}: {str(e)}")
-            return url, None
+            return url, text, None
+        except asyncio.TimeoutError:
+            return url, None, "Request timed out"
+        except Exception as e:
+            return url, None, str(e)
     
     try:
         tasks = [process_url(url) for url in urls]
@@ -126,12 +130,22 @@ async def visit_webpages(urls: Sequence[str]) -> str:
     
     # Format results as markdown
     formatted_sections = []
-    for url, content in results:
+    for url, content, error in results:
+        formatted_sections.extend([
+            f"# Content from {url}",
+            ""
+        ])
+        
         if content:
             formatted_sections.extend([
-                f"# Content from {url}",
-                "",
                 content.strip(),
+                "",
+                "---"
+            ])
+        else:
+            error_msg = error or "No content extracted"
+            formatted_sections.extend([
+                f"No content extracted: {error_msg}",
                 "",
                 "---"
             ])

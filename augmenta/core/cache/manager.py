@@ -3,7 +3,6 @@
 import json
 import threading
 import uuid
-import logging
 import atexit
 import os
 from datetime import datetime, timedelta
@@ -15,6 +14,10 @@ from .models import ProcessStatus
 from .database import DatabaseConnection
 from augmenta.utils.validators import validate_string, validate_int
 
+# logging
+import logging
+import logfire
+logging.basicConfig(handlers=[logfire.LogfireLoggingHandler()])
 logger = logging.getLogger(__name__)
 
 class CacheManager:

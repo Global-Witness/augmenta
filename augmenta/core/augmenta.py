@@ -2,7 +2,6 @@
 
 import yaml
 import json
-import logging
 import asyncio
 import pandas as pd
 from pathlib import Path
@@ -17,8 +16,7 @@ from augmenta.core.llm.agent import WebResearchAgent
 from augmenta.core.cache import CacheManager
 from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.core.config.credentials import CredentialsManager
-
-logger = logging.getLogger(__name__)
+import logfire
 
 REQUIRED_CONFIG_FIELDS: Set[str] = {
     "input_csv",
@@ -50,21 +48,16 @@ def validate_config(config: Dict[str, Any]) -> None:
     if not isinstance(config.get("prompt"), dict):
         raise AugmentaError("'prompt' must be a dictionary")
 
-def get_model_settings(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract model settings from config."""
-    model_config = config.get("model", {})
-    settings = {}
-    
-    if "rate_limit" in model_config:
-        settings["rate_limit"] = model_config["rate_limit"]
-    if "max_tokens" in model_config:
-        settings["max_tokens"] = model_config["max_tokens"]
-    if "temperature" in model_config:
-        settings["temperature"] = model_config["temperature"]
-    else:
-        settings["temperature"] = 0.0  # Default temperature
-        
-    return settings
+def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract commonly used config values."""
+    return {
+        "model_id": f"{config['model']['provider']}:{config['model']['name']}",
+        "temperature": config.get("model", {}).get("temperature", 0.0),
+        "max_tokens": config.get("model", {}).get("max_tokens"),
+        "rate_limit": config.get("model", {}).get("rate_limit"),
+        "search_engine": config["search"]["engine"],
+        "search_results": config["search"]["results"]
+    }
 
 async def process_row(
     row_data: Dict[str, Any],
@@ -81,9 +74,13 @@ async def process_row(
         row = row_data['data']
         query = row[config['query_col']]
         
-        # Get model settings from config
-        model_settings = get_model_settings(config)
-        model_id = f"{config['model']['provider']}:{config['model']['name']}"
+        # Get common config values
+        config_values = get_config_values(config)
+        model_settings = {
+            "temperature": config_values["temperature"],
+            "max_tokens": config_values["max_tokens"],
+            "rate_limit": config_values["rate_limit"]
+        }
         
         # Check if agent mode is enabled
         agent_config = config.get("agent", {})
@@ -92,7 +89,7 @@ async def process_row(
         if use_agent:
             # Use WebResearchAgent for autonomous operation
             agent = WebResearchAgent(
-                model=model_id,
+                model=config_values["model_id"],
                 verbose=verbose,
                 search_config=config["search"],
                 **model_settings
@@ -116,9 +113,9 @@ async def process_row(
             # Use traditional approach with base agent functionality
             search_results = await _search_web_impl(
                 query=query,
-                results=config["search"]["results"],
-                engine=config["search"]["engine"],
-                rate_limit=config["search"].get("rate_limit"),
+                results=config_values["search_results"],
+                engine=config_values["search_engine"],
+                rate_limit=config_values["rate_limit"],
                 credentials=credentials,
                 search_config=config["search"]
             )
@@ -133,37 +130,9 @@ async def process_row(
                 timeout=extraction_config.get("timeout", 30)
             )
             
-            # Categorize URLs
-            used_urls = []
-            no_content_urls = []
-            attempted_urls = set(urls)
-            
-            for url, content in raw_results:
-                if content and content.strip():
-                    used_urls.append(url)
-                    attempted_urls.remove(url)
-                elif content is not None:  # Empty string content
-                    no_content_urls.append(url)
-                    attempted_urls.remove(url)
-            
-            # Format the sources summary
-            sources_summary = []
-            if used_urls:
-                sources_summary.append("Used:")
-                sources_summary.extend(used_urls)
-            if no_content_urls:
-                if sources_summary:
-                    sources_summary.append("")
-                sources_summary.append("No content:")
-                sources_summary.extend(no_content_urls)
-            if attempted_urls:
-                if sources_summary:
-                    sources_summary.append("")
-                sources_summary.append("Attempted:")
-                sources_summary.extend(attempted_urls)
-            
-            # Filter out URLs with no content for the prompt
+            # Filter valid URLs and create sources summary
             valid_urls = [(url, content) for url, content in raw_results if content and content.strip()]
+            sources_summary = [url for url, _ in valid_urls]
             
             prompt_user = config["prompt"]["user"]
             
@@ -180,7 +149,7 @@ async def process_row(
             response = await make_request_llm(
                 prompt_system=config["prompt"]["system"],
                 prompt_user=prompt_user,
-                model=model_id,
+                model=config_values["model_id"],
                 response_format=Structure,
                 verbose=verbose,
                 **model_settings
@@ -204,7 +173,7 @@ async def process_row(
         return ProcessingResult(index=index, data=response)
         
     except Exception as e:
-        logger.error(f"Error processing row {index}: {str(e)}", exc_info=True)
+        logfire.error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
         return ProcessingResult(index=index, data=None, error=str(e))
 
 async def process_augmenta(
@@ -226,16 +195,15 @@ async def process_augmenta(
     
     validate_config(config_data)
     
-    # Get credentials based on configured search engine
-    engine = config_data["search"]["engine"]
-    # Initialize credentials manager
+    # Extract common config values and get credentials
+    config_values = get_config_values(config_data)
     credentials_manager = CredentialsManager()
     try:
         from augmenta.core.search.providers import PROVIDERS
-        required_credentials = PROVIDERS[engine].required_credentials
+        required_credentials = PROVIDERS[config_values["search_engine"]].required_credentials
         credentials = credentials_manager.get_credentials(required_credentials)
     except KeyError as e:
-        raise AugmentaError(f"Unsupported search engine: {engine}")
+        raise AugmentaError(f"Unsupported search engine: {config_values['search_engine']}")
     except ValueError as e:
         raise AugmentaError(f"Credentials error: {str(e)}")
     
@@ -275,19 +243,22 @@ async def process_augmenta(
         processed += 1
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
+    # Create a semaphore to limit concurrent tasks
+    semaphore = asyncio.Semaphore(5)
 
-    tasks = [
-        process_row(
-            row_data=row,
-            config=config_data,
-            credentials=credentials,
-            cache_manager=cache_manager,
-            process_id=process_id,
-            progress_callback=update_progress,
-            verbose=verbose
-        ) for row in rows_to_process
-    ]
-    
+    async def process_with_limit(row):
+        async with semaphore:
+            return await process_row(
+                row_data=row,
+                config=config_data,
+                credentials=credentials,
+                cache_manager=cache_manager,
+                process_id=process_id,
+                progress_callback=update_progress,
+                verbose=verbose
+            )
+
+    tasks = [process_with_limit(row) for row in rows_to_process]
     results = await asyncio.gather(*tasks)
 
     for result in results:

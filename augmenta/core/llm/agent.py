@@ -1,12 +1,9 @@
 from typing import List, Optional, Tuple, Type, Union, Any
-import logging
 from pydantic_ai import RunContext
 from pydantic import BaseModel
 from ..search import search_web as search_web_impl
 from ..extractors import visit_webpages as visit_webpages_impl
 from .base import BaseAgent
-
-logger = logging.getLogger(__name__)
 
 class WebResearchAgent(BaseAgent):
     """An autonomous agent capable of web research through tools."""
