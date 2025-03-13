@@ -244,7 +244,7 @@ async def process_augmenta(
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
     # Create a semaphore to limit concurrent tasks
-    semaphore = asyncio.Semaphore(10)
+    semaphore = asyncio.Semaphore(5)
 
     async def process_with_limit(row):
         async with semaphore:

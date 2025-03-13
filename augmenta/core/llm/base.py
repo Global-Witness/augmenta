@@ -125,8 +125,8 @@ class BaseAgent:
             result = await self.agent.run(
                 prompt_user,
                 result_type=response_format,
-                model_settings=model_settings,
-                usage_limits=UsageLimits(request_limit=5)
+                model_settings=model_settings
+                # usage_limits=UsageLimits(request_limit=5)
             )
 
             # Return the appropriate result format

@@ -49,7 +49,7 @@ class SearchProvider(ABC):
                         method,
                         url,
                         follow_redirects=True,
-                        timeout=10.0,
+                        timeout=20.0,
                         **kwargs
                     )
                     response.raise_for_status()
