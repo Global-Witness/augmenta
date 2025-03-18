@@ -6,7 +6,7 @@ from typing import Generator
 from pathlib import Path
 from datetime import datetime
 
-from augmenta.utils.exceptions import DatabaseError
+from .exceptions import DatabaseError
 
 # logging
 import logging

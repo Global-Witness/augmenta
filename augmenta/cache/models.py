@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Literal
 
 from augmenta.utils.validators import validate_string, validate_int, validate_datetime
-from augmenta.utils.exceptions import ValidationError
+from .exceptions import ValidationError
 
 ProcessStatusType = Literal['running', 'completed']
 

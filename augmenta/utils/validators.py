@@ -4,7 +4,7 @@ from typing import Any, Pattern
 from datetime import datetime
 import re
 from urllib.parse import urlparse
-from .exceptions import ValidationError
+from augmenta.cache.exceptions import ValidationError
 
 # Common URL validation pattern
 URL_PATTERN: Pattern = re.compile(

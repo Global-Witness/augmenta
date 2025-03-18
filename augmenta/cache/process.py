@@ -6,7 +6,7 @@ import pandas as pd
 from typing import Optional, Dict, Any, Tuple
 from pathlib import Path
 
-from augmenta.utils.utils import get_hash
+from augmenta.utils.get_hash import get_hash
 from .manager import CacheManager
 
 def handle_process_resumption(
