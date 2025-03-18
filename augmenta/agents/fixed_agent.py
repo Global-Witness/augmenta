@@ -41,8 +41,7 @@ class FixedAgent(BaseAgent):
             temperature=temperature,
             rate_limit=rate_limit,
             max_tokens=max_tokens,
-            verbose=verbose,
-            tools=[search_web, visit_webpages]
+            verbose=verbose
         )
         self.system_prompt = system_prompt
 
