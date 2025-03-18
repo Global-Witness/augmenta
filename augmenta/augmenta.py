@@ -1,29 +1,20 @@
 """Core processing logic for the Augmenta package."""
 
-import yaml
 import json
 import asyncio
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any, Callable, Set
+from typing import Optional, Tuple, Dict, Any, Callable
 from dataclasses import dataclass
 
-from augmenta.tools.search import _search_web_impl
-from augmenta.tools.extractors import _visit_webpages_impl
-from augmenta.utils.prompt_formatter import format_docs, format_examples
-from augmenta.agents.base import BaseAgent, make_request_llm
-from augmenta.agents.agent import WebResearchAgent
+from augmenta.utils.prompt_formatter import format_examples
+from augmenta.agents.base import BaseAgent
+from augmenta.agents.autonomous_agent import AutonomousAgent
+from augmenta.agents.fixed_agent import FixedAgent
 from augmenta.cache import CacheManager
 from augmenta.cache.process import handle_process_resumption, setup_caching, apply_cached_results
+from augmenta.config.read_config import load_config, get_config_values
 import logfire
-
-REQUIRED_CONFIG_FIELDS: Set[str] = {
-    "input_csv",
-    "query_col",
-    "prompt",
-    "model",
-    "search"
-}
 
 @dataclass
 class ProcessingResult:
@@ -35,28 +26,6 @@ class ProcessingResult:
 class AugmentaError(Exception):
     """Base exception for Augmenta-related errors."""
     pass
-
-def validate_config(config: Dict[str, Any]) -> None:
-    """Validate configuration data structure and required fields."""
-    missing_fields = REQUIRED_CONFIG_FIELDS - set(config.keys())
-    if missing_fields:
-        raise AugmentaError(f"Missing required config fields: {missing_fields}")
-    
-    if not isinstance(config.get("search"), dict):
-        raise AugmentaError("'search' must be a dictionary")
-    if not isinstance(config.get("prompt"), dict):
-        raise AugmentaError("'prompt' must be a dictionary")
-
-def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract commonly used config values."""
-    return {
-        "model_id": f"{config['model']['provider']}:{config['model']['name']}",
-        "temperature": config.get("model", {}).get("temperature", 0.0),
-        "max_tokens": config.get("model", {}).get("max_tokens"),
-        "rate_limit": config.get("model", {}).get("rate_limit"),
-        "search_engine": config["search"]["engine"],
-        "search_results": config["search"]["results"]
-    }
 
 async def process_row(
     row_data: Dict[str, Any],
@@ -85,76 +54,40 @@ async def process_row(
         use_agent = agent_config.get("enabled", False)
         
         if use_agent:
-            # Use WebResearchAgent for autonomous operation
-            agent = WebResearchAgent(
+            # Use AutonomousAgent for autonomous operation
+            agent = AutonomousAgent(
                 model=config_values["model_id"],
                 verbose=verbose,
-                search_config=config["search"],
                 **model_settings
             )
             
-            # Format prompt with row data
-            prompt_user = config["prompt"]["user"]
-            for column, value in row.items():
-                prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
-                
-            # Add examples if configured
-            if examples_yaml := config.get("examples"):
-                if examples_text := format_examples(examples_yaml):
-                    prompt_user = f'{prompt_user}\n\n{examples_text}'
+        # Format prompt with row data
+        prompt_user = config["prompt"]["user"]
+        for column, value in row.items():
+            prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
             
-            Structure = BaseAgent.create_structure_class(config["config_path"])
+        # Format examples and structure
+        if examples_yaml := config.get("examples"):
+            if examples_text := format_examples(examples_yaml):
+                prompt_user = f'{prompt_user}\n\n{examples_text}'
+        
+        Structure = BaseAgent.create_structure_class(config["config_path"])
+        
+        if use_agent:
             # Let the agent handle search and extraction
             response = await agent.run(prompt_user, response_format=Structure)
             
         else:
-            # Use traditional approach with base agent functionality
-            search_results = await _search_web_impl(
-                query=query,
-                results=config_values["search_results"],
-                engine=config_values["search_engine"],
-                rate_limit=config_values["rate_limit"],
-                search_config=config["search"]
-            )
-            
-            urls = [result['url'] for result in search_results]
-            
-            # Get extraction config options if provided
-            extraction_config = config.get("extraction", {})
-            raw_results = await _visit_webpages_impl(
-                urls=urls,
-                max_workers=extraction_config.get("max_workers", 10),
-                timeout=extraction_config.get("timeout", 30)
-            )
-            
-            # Filter valid URLs and create sources summary
-            valid_urls = [(url, content) for url, content in raw_results if content and content.strip()]
-            sources_summary = [url for url, _ in valid_urls]
-            
-            prompt_user = config["prompt"]["user"]
-            
-            for column, value in row.items():
-                prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
-            
-            if examples_yaml := config.get("examples"):
-                if examples_text := format_examples(examples_yaml):
-                    prompt_user = f'{prompt_user}\n\n{examples_text}'
-            
-            prompt_user = f'{prompt_user}\n\n## Documents\n\n{format_docs(valid_urls)}'
-
-            Structure = BaseAgent.create_structure_class(config["config_path"])
-            response = await make_request_llm(
-                prompt_system=config["prompt"]["system"],
-                prompt_user=prompt_user,
+            agent = FixedAgent(
                 model=config_values["model_id"],
-                response_format=Structure,
                 verbose=verbose,
+                system_prompt=config["prompt"]["system"],
+                search_config=config["search"],
                 **model_settings
             )
             
-            # Add sources summary to response if it's a dict
-            if isinstance(response, dict):
-                response['augmenta_sources'] = "\n".join(sources_summary)
+            response = await agent.run(prompt_user, response_format=Structure)
+            response = await agent.run(prompt_user, response_format=Structure)
         
         if cache_manager and process_id:
             cache_manager.cache_result(
@@ -186,11 +119,7 @@ async def process_augmenta(
     if not config_path.exists():
         raise AugmentaError(f"Config file not found: {config_path}")
     
-    with open(config_path, 'r', encoding='utf-8') as f:
-        config_data = yaml.safe_load(f)
-        config_data["config_path"] = str(config_path)
-    
-    validate_config(config_data)
+    config_data = load_config(config_path)
     
     # Extract common config values
     config_values = get_config_values(config_data)

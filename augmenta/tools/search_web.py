@@ -1,29 +1,25 @@
 """Search functionality for the Augmenta package."""
 
-from typing import Dict, List, Any, Optional
-from .providers import PROVIDERS
-from ...config.credentials import CredentialsManager
+from typing import Dict, List
+from .search_providers import PROVIDERS
+from ..config.credentials import CredentialsManager
+from ..config.read_config import get_config
 
-async def _search_web_impl(
-    query: str,
-    results: int,
-    engine: str,
-    rate_limit: Optional[float] = None,
-    search_config: Dict[str, Any] = None
-) -> List[Dict[str, str]]:
-    """Implementation of web search functionality.
+async def search_web(query: str) -> List[Dict[str, str]]:
+    """Web search functionality using configured provider.
     
     Args:
         query: Search query string
-        results: Number of results to return
-        engine: Search engine to use
-        rate_limit: Optional rate limit in seconds
-        search_config: Additional search configuration options
         
     Returns:
         List of search results with 'url' and 'title' fields
     """
     try:
+        config = get_config()
+        search_config = config.get("search", {})
+        engine = search_config.get("engine")
+        results = search_config.get("results", 5)
+
         provider_class = PROVIDERS[engine]
         credentials_manager = CredentialsManager()
         credentials = credentials_manager.get_credentials(provider_class.required_credentials)

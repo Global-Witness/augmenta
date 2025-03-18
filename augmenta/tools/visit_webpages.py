@@ -87,7 +87,7 @@ class TrafilaturaProvider:
             logger.error(f"Trafilatura extraction failed: {str(e)}")
             return None
 
-async def _visit_webpages_impl(urls: List[str], max_workers: int = 10, timeout: int = 30) -> List[Tuple[str, Optional[str]]]:
+async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 30) -> List[Tuple[str, Optional[str]]]:
     """Implementation of webpage content extraction.
     
     Args:

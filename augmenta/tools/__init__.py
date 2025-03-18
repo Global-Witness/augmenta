@@ -1,11 +1,11 @@
 """Tools and utilities for web interaction."""
 
-from .search import _search_web_impl
-from .extractors import HTTPProvider, TrafilaturaProvider, _visit_webpages_impl
+from .search_web import search_web
+from .visit_webpages import HTTPProvider, TrafilaturaProvider, visit_webpages
 
 __all__ = [
-    '_search_web_impl',
+    'search_web',
     'HTTPProvider',
     'TrafilaturaProvider',
-    '_visit_webpages_impl'
+    'visit_webpages'
 ]

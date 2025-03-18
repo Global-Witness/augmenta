@@ -19,12 +19,13 @@ class BaseAgent:
     }
     
     def __init__(
-        self, 
-        model: str, 
+        self,
+        model: str,
         temperature: float = 0.0,
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        verbose: bool = False
+        verbose: bool = False,
+        tools: Optional[list] = None
     ):
         """Initialize the base agent.
         
@@ -34,6 +35,7 @@ class BaseAgent:
             rate_limit: Optional rate limit between requests
             max_tokens: Optional maximum tokens for response
             verbose: Whether to enable verbose logging with logfire
+            tools: Optional list of tool functions to register
         """
         # Create model settings with all available parameters
         model_settings = {'temperature': temperature}
@@ -44,7 +46,8 @@ class BaseAgent:
             
         self.agent = Agent(
             model,
-            model_settings=model_settings
+            model_settings=model_settings,
+            tools=tools or []
         )
         self.model = model
         self.temperature = temperature

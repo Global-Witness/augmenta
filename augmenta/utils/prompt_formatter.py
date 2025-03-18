@@ -62,7 +62,8 @@ def format_xml(obj: Any, *, root_tag: str = "data", item_tag: str = "item", pref
         obj,
         root_tag=root_tag,
         item_tag=item_tag,
-        indent="  "
+        indent="  ",
+        include_root_tag=False
     )
     
     return f"{prefix}\n{xml}" if prefix else xml
