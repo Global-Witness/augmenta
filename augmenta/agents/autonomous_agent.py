@@ -2,7 +2,7 @@ from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
 from ..tools.search_web import search_web
 from ..tools.visit_webpages import visit_webpages
-from .base import BaseAgent
+from .base_agent import BaseAgent
 
 class AutonomousAgent(BaseAgent):
     """An autonomous agent capable of web research through tools."""
@@ -14,7 +14,7 @@ class AutonomousAgent(BaseAgent):
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyze web pages."
+        system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyse web pages."
     ):
         """Initialize the web research agent.
         

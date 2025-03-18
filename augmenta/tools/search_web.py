@@ -2,7 +2,7 @@
 
 from typing import Dict, List
 from .search_providers import PROVIDERS
-from ..config.credentials import CredentialsManager
+from ..config.get_credentials import CredentialsManager
 from ..config.read_config import get_config
 
 async def search_web(query: str) -> List[Dict[str, str]]:

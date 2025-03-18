@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..tools.search_web import search_web
 from ..tools.visit_webpages import visit_webpages
 from ..utils.prompt_formatter import format_docs
-from .base import BaseAgent, make_request_llm
+from .base_agent import BaseAgent, make_request_llm
 
 class FixedAgent(BaseAgent):
     """An agent that implements a fixed for web research.
@@ -24,7 +24,7 @@ class FixedAgent(BaseAgent):
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        system_prompt: str = "You are a web research assistant analyzing search results."
+        system_prompt: str = "You are a web research assistant analysing search results."
     ):
         """Initialize the workflow agent.
         
@@ -51,7 +51,7 @@ class FixedAgent(BaseAgent):
         prompt: str,
         response_format: Optional[Type[BaseModel]] = None
     ) -> Union[str, dict[str, Any], BaseModel]:
-        """Run the fixed workflow to research and analyze.
+        """Run the fixed workflow to research and analyse.
         
         Args:
             prompt: The research query or task

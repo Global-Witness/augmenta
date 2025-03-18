@@ -12,7 +12,7 @@ os.environ["LOGFIRE_IGNORE_NO_CONFIG"] = "1"
 
 from augmenta.augmenta import process_augmenta
 from augmenta.cache.process import handle_cache_cleanup
-from augmenta.config.credentials import CredentialsManager
+from augmenta.config.get_credentials import CredentialsManager
 import logfire
 
 # Initialize colorama

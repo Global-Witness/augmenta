@@ -85,7 +85,7 @@ Let's break down what each of these fields means.
 
 - `input_csv`: The name of the CSV file you want to augment. This file should be in the same project as your `config.yaml` file.
 - `output_csv`: The name of the CSV file you want to create with the augmented data.
-- `model`: The name of the LLM you want to use. You can find a list of supported models [here](https://docs.litellm.ai/docs/providers). Note that you need to provide both the provider and the model name (ie. `anthropic/claude-3.5-sonnet`).
+- `model`: The name of the LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both the provider and the model name (ie. `anthropic/claude-3.5-sonnet`).
 - `query_col`: The name of the column in your input CSV that you want to use as the search query. Augmenta will retrieve results for each row in this column and use them to augment your data.
 - `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md).
 - `prompt`: The instructions you want the AI to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).

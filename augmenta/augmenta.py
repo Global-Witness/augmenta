@@ -8,7 +8,7 @@ from typing import Optional, Tuple, Dict, Any, Callable, Type
 from dataclasses import dataclass
 
 from augmenta.utils.prompt_formatter import format_examples
-from augmenta.agents.base import BaseAgent
+from augmenta.agents.base_agent import BaseAgent
 from augmenta.agents.autonomous_agent import AutonomousAgent
 from augmenta.agents.fixed_agent import FixedAgent
 from augmenta.cache import CacheManager
