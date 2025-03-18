@@ -32,10 +32,9 @@ class ContentProvider(Protocol):
         ...
 
 # Configure providers as module-level instances
-from .providers import HTTPProvider, PlaywrightProvider, TrafilaturaProvider
+from .providers import HTTPProvider, TrafilaturaProvider
 
 http_provider = HTTPProvider()
-playwright_provider = PlaywrightProvider()
 text_provider = TrafilaturaProvider()
 
 async def _visit_webpage_impl(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optional[str]:
@@ -45,12 +44,8 @@ async def _visit_webpage_impl(url: str, timeout: int = DEFAULT_TIMEOUT) -> Optio
         return None
     
     try:
-        # First try with HTTP provider
+        # Try with HTTP provider
         content = await http_provider.get_content(url, timeout)
-        if not content:
-            # Fallback to Playwright if HTTP fails
-            logger.debug(f"HTTP extraction failed for {url}, trying Playwright")
-            content = await playwright_provider.get_content(url, timeout)
         
         if content:
             # Extract main text using trafilatura

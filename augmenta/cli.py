@@ -7,6 +7,9 @@ import yaml
 from typing import Dict, Any, Optional
 from colorama import Fore, Style, init
 
+# Configure logfire to suppress warnings unless in verbose mode
+os.environ["LOGFIRE_IGNORE_NO_CONFIG"] = "1"
+
 from augmenta.core.augmenta import process_augmenta
 from augmenta.core.cache.process import handle_cache_cleanup
 from augmenta.core.config.credentials import CredentialsManager
@@ -26,7 +29,9 @@ class ConsolePrinter:
   / /| |/ / / / __ `/ __ `__ \/ _ \/ __ \/ __/ __ `/
  / ___ / /_/ / /_/ / / / / / /  __/ / / / /_/ /_/ / 
 /_/  |_\__,_/\__, /_/ /_/ /_/\___/_/ /_/\__/\__,_/  
-            /____/                                  """
+            /____/                                  
+
+"""
         
         print(f"{Fore.CYAN}{Style.BRIGHT}{banner}{Style.RESET_ALL}")
     
@@ -73,7 +78,12 @@ def main(
         
         # Configure logging based on verbosity
         if verbose:
-            logfire.configure(scrubbing=False)
+            # Only send to logfire if explicitly enabled via env var
+            send_to_logfire = os.getenv('LOGFIRE_SEND_TO_LOGFIRE', '').lower() == 'true'
+            logfire.configure(
+                scrubbing=False,
+                send_to_logfire='if-token-present' if not send_to_logfire else True
+            )
             
             logfire.instrument_httpx(capture_all=True)
             # logfire.instrument_pydantic()
@@ -95,9 +105,6 @@ def main(
         if verbose:
             click.echo(f"Processing config file: {config_path}")
 
-        # Print an initial empty line for the processing status
-        print(f"{Fore.CYAN}Processing: Starting...{Style.RESET_ALL}")
-            
         with click.progressbar(
             length=100,
             label=f'{Fore.GREEN}Progress{Style.RESET_ALL}',

@@ -117,7 +117,7 @@ Save `config.yaml` and `.env`, and open a terminal window in the root directory 
 
 By default, Augmenta will save your progress so that you can resume if the process gets interrupted at any point. You can find options for working with the cache [here](docs/cache.md).
 
-To run Augmenta in verbose mode, use the `-v` flag: `augmenta -v config.yaml`.
+To run Augmenta in verbose mode, use the `-v` flag: `augmenta -v config.yaml`. You can also add `LOGFIRE_SEND_TO_LOGFIRE=true` to your `.env` file to send logs to [logfire](https://logfire.pydantic.dev/), making it easier to observe what's happening.
 
 ## Read more
 
