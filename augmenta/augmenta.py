@@ -4,7 +4,7 @@ import json
 import asyncio
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any, Callable
+from typing import Optional, Tuple, Dict, Any, Callable, Type
 from dataclasses import dataclass
 
 from augmenta.utils.prompt_formatter import format_examples
@@ -27,96 +27,45 @@ class AugmentaError(Exception):
     """Base exception for Augmenta-related errors."""
     pass
 
-async def process_row(
-    row_data: Dict[str, Any],
-    config: Dict[str, Any],
-    cache_manager: Optional[CacheManager] = None,
-    process_id: Optional[str] = None,
-    progress_callback: Optional[Callable[[str], None]] = None,
-    verbose: bool = False
-) -> ProcessingResult:
-    """Process a single data row asynchronously."""
-    try:
-        index = row_data['index']
-        row = row_data['data']
-        query = row[config['query_col']]
-        
-        # Get common config values
-        config_values = get_config_values(config)
-        agent_settings = {
-            "model": config_values["model_id"],
-            "temperature": config_values["temperature"],
-            "max_tokens": config_values["max_tokens"],
-            "rate_limit": config_values["rate_limit"],
-            "verbose": verbose,
-            "system_prompt": config["prompt"]["system"]
-        }
-        
-        # Get agent mode and initialize appropriate agent
-        agent_mode = config.get("agent", "fixed")
-        
-        # Format prompt with row data
-        prompt_user = config["prompt"]["user"]
-        for column, value in row.items():
-            prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
-            
-        # Format examples and structure
-        if examples_yaml := config.get("examples"):
-            if examples_text := format_examples(examples_yaml):
-                prompt_user = f'{prompt_user}\n\n{examples_text}'
-        
-        Structure = BaseAgent.create_structure_class(config["config_path"])
-
-        # Initialize agent based on mode
-        if agent_mode == "autonomous":
-            agent = AutonomousAgent(**agent_settings)
-        elif agent_mode == "fixed":
-            agent = FixedAgent(**agent_settings)
-        else:
-            raise AugmentaError(f"Invalid agent mode: {agent_mode}")
-        
-        # Run the agent with the prepared prompt
-        response = await agent.run(prompt_user, response_format=Structure)
-        
-        if cache_manager and process_id:
-            cache_manager.cache_result(
-                process_id=process_id,
-                row_index=index,
-                query=query,
-                result=json.dumps(response)
-            )
-        
-        if progress_callback:
-            progress_callback(query)
-            
-        return ProcessingResult(index=index, data=response)
-        
-    except Exception as e:
-        logfire.error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
-        return ProcessingResult(index=index, data=None, error=str(e))
 
 async def process_augmenta(
     config_path: str | Path,
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, str], None]] = None,
-    auto_resume: bool = True,
-    verbose: bool = False
+    auto_resume: bool = True
 ) -> Tuple[pd.DataFrame, Optional[str]]:
     """Process data using the Augmenta pipeline."""
+    # Load and validate configuration
     config_path = Path(config_path)
     if not config_path.exists():
         raise AugmentaError(f"Config file not found: {config_path}")
     
     config_data = load_config(config_path)
     
-    # Extract common config values
+    # Initialize agent once for all processing
     config_values = get_config_values(config_data)
+    agent_settings = {
+        "model": config_values["model_id"],
+        "temperature": config_values["temperature"],
+        "max_tokens": config_values["max_tokens"],
+        "rate_limit": config_values["rate_limit"],
+        "system_prompt": config_data["prompt"]["system"]
+    }
     
+    agent_mode = config_data.get("agent", "fixed")
+    agent = (AutonomousAgent(**agent_settings) if agent_mode == "autonomous"
+            else FixedAgent(**agent_settings))
+            
+    # Create structure class once
+    response_format = BaseAgent.create_structure_class(config_data["config_path"])
+    
+    # Load and validate input data
     df = pd.read_csv(config_data["input_csv"])
     if config_data["query_col"] not in df.columns:
         raise AugmentaError(f"Query column '{config_data['query_col']}' not found in CSV")
 
+    # Handle caching setup
     process_id = handle_process_resumption(
         config_data=config_data,
         config_path=config_path,
@@ -137,40 +86,45 @@ async def process_augmenta(
     if cache_enabled:
         df = apply_cached_results(df, process_id, cache_manager)
 
+    # Prepare rows for processing
     rows_to_process = [
         {'index': index, 'data': row}
         for index, row in df.iterrows()
         if not cache_enabled or index not in cached_results
     ]
 
+    # Setup progress tracking
     processed = 0
     def update_progress(query: str) -> None:
         nonlocal processed
         processed += 1
         if progress_callback:
             progress_callback(processed, len(rows_to_process), query)
-    # Create a semaphore to limit concurrent tasks
-    semaphore = asyncio.Semaphore(5)
 
+    # Process rows concurrently with rate limiting
+    semaphore = asyncio.Semaphore(5)
     async def process_with_limit(row):
         async with semaphore:
             return await process_row(
                 row_data=row,
                 config=config_data,
+                agent=agent,
+                response_format=response_format,
                 cache_manager=cache_manager,
                 process_id=process_id,
-                progress_callback=update_progress,
-                verbose=verbose
+                progress_callback=update_progress
             )
 
     tasks = [process_with_limit(row) for row in rows_to_process]
     results = await asyncio.gather(*tasks)
 
+    # Update DataFrame with results
     for result in results:
         if result.data:
             for key, value in result.data.items():
                 df.at[result.index, key] = value
 
+    # Save output and cleanup
     if output_csv := config_data.get("output_csv"):
         df.to_csv(output_csv, index=False)
         
@@ -178,3 +132,52 @@ async def process_augmenta(
         cache_manager.mark_process_completed(process_id)
         
     return df, process_id if cache_enabled else None
+
+
+
+async def process_row(
+    row_data: Dict[str, Any],
+    config: Dict[str, Any],
+    agent: BaseAgent,
+    response_format: Type,
+    cache_manager: Optional[CacheManager] = None,
+    process_id: Optional[str] = None,
+    progress_callback: Optional[Callable[[str], None]] = None,
+) -> ProcessingResult:
+    """Process a single data row asynchronously."""
+    try:
+        index = row_data['index']
+        row = row_data['data']
+        query = row[config['query_col']]
+        
+        # Format prompt with row data
+        prompt_user = config["prompt"]["user"]
+        for column, value in row.items():
+            prompt_user = prompt_user.replace(f"{{{{{column}}}}}", str(value))
+            
+        # Format examples if present
+        if examples_yaml := config.get("examples"):
+            if examples_text := format_examples(examples_yaml):
+                prompt_user = f'{prompt_user}\n\n{examples_text}'
+        
+        # Run prompt using the provided agent
+        response = await agent.run(prompt_user, response_format=response_format)
+        
+        # Handle caching if enabled
+        if cache_manager and process_id:
+            cache_manager.cache_result(
+                process_id=process_id,
+                row_index=index,
+                query=query,
+                result=json.dumps(response)
+            )
+        
+        # Update progress if callback provided
+        if progress_callback:
+            progress_callback(query)
+            
+        return ProcessingResult(index=index, data=response)
+        
+    except Exception as e:
+        logfire.error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
+        return ProcessingResult(index=index, data=None, error=str(e))
