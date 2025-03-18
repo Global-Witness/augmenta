@@ -1,8 +1,9 @@
-from typing import List, Optional, Sequence, Protocol
+from typing import List, Optional, Sequence, Protocol, Tuple
 import asyncio
 from dataclasses import dataclass
 
 from augmenta.utils.validators import is_valid_url
+from augmenta.core.prompt.prompt_formatter import format_docs
 
 # logging
 import logging
@@ -123,28 +124,12 @@ async def visit_webpages(urls: Sequence[str]) -> str:
         timeout=DEFAULT_TIMEOUT
     )
     
-    # Format results as markdown
-    formatted_sections = []
-    for url, content, error in results:
-        formatted_sections.extend([
-            f"# Content from {url}",
-            ""
-        ])
-        
-        if content:
-            formatted_sections.extend([
-                content.strip(),
-                "",
-                "---"
-            ])
-        else:
-            error_msg = error or "No content extracted"
-            formatted_sections.extend([
-                f"No content extracted: {error_msg}",
-                "",
-                "---"
-            ])
+    # Convert results to format expected by format_docs
+    docs_content: List[Tuple[str, Optional[str]]] = [
+        (url, content.strip() if content else None)
+        for url, content, _ in results
+    ]
     
-    return "\n".join(formatted_sections[:-1] if formatted_sections else ["No content extracted"])
+    return format_docs(docs_content)
 
 __all__ = ['visit_webpages', 'ExtractionError']
