@@ -43,24 +43,18 @@ async def process_row(
         
         # Get common config values
         config_values = get_config_values(config)
-        model_settings = {
+        agent_settings = {
+            "model": config_values["model_id"],
             "temperature": config_values["temperature"],
             "max_tokens": config_values["max_tokens"],
-            "rate_limit": config_values["rate_limit"]
+            "rate_limit": config_values["rate_limit"],
+            "verbose": verbose,
+            "system_prompt": config["prompt"]["system"]
         }
         
-        # Check if agent mode is enabled
-        agent_config = config.get("agent", {})
-        use_agent = agent_config.get("enabled", False)
+        # Get agent mode and initialize appropriate agent
+        agent_mode = config.get("agent", "fixed")
         
-        if use_agent:
-            # Use AutonomousAgent for autonomous operation
-            agent = AutonomousAgent(
-                model=config_values["model_id"],
-                verbose=verbose,
-                **model_settings
-            )
-            
         # Format prompt with row data
         prompt_user = config["prompt"]["user"]
         for column, value in row.items():
@@ -72,22 +66,17 @@ async def process_row(
                 prompt_user = f'{prompt_user}\n\n{examples_text}'
         
         Structure = BaseAgent.create_structure_class(config["config_path"])
-        
-        if use_agent:
-            # Let the agent handle search and extraction
-            response = await agent.run(prompt_user, response_format=Structure)
-            
+
+        # Initialize agent based on mode
+        if agent_mode == "autonomous":
+            agent = AutonomousAgent(**agent_settings)
+        elif agent_mode == "fixed":
+            agent = FixedAgent(**agent_settings)
         else:
-            agent = FixedAgent(
-                model=config_values["model_id"],
-                verbose=verbose,
-                system_prompt=config["prompt"]["system"],
-                search_config=config["search"],
-                **model_settings
-            )
-            
-            response = await agent.run(prompt_user, response_format=Structure)
-            response = await agent.run(prompt_user, response_format=Structure)
+            raise AugmentaError(f"Invalid agent mode: {agent_mode}")
+        
+        # Run the agent with the prepared prompt
+        response = await agent.run(prompt_user, response_format=Structure)
         
         if cache_manager and process_id:
             cache_manager.cache_result(
