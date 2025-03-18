@@ -10,9 +10,9 @@ from colorama import Fore, Style, init
 # Configure logfire to suppress warnings unless in verbose mode
 os.environ["LOGFIRE_IGNORE_NO_CONFIG"] = "1"
 
-from augmenta.core.augmenta import process_augmenta
-from augmenta.core.cache.process import handle_cache_cleanup
-from augmenta.core.config.credentials import CredentialsManager
+from augmenta.augmenta import process_augmenta
+from augmenta.cache.process import handle_cache_cleanup
+from augmenta.config.credentials import CredentialsManager
 import logfire
 
 # Initialize colorama

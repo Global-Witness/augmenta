@@ -1,8 +1,8 @@
 from typing import List, Optional, Tuple, Type, Union, Any
 from pydantic_ai import RunContext
 from pydantic import BaseModel
-from ..search import search_web as search_web_impl
-from ..extractors import visit_webpages as visit_webpages_impl
+from ..tools.search import _search_web_impl
+from ..tools.extractors import _visit_webpages_impl
 from .base import BaseAgent
 
 class WebResearchAgent(BaseAgent):
@@ -55,7 +55,23 @@ class WebResearchAgent(BaseAgent):
                 Markdown formatted search results with titles and descriptions
             """
             engine = self.search_config.get('engine')
-            return await search_web_impl(query, engine=engine)
+            results = self.search_config.get('results', 5)
+            search_results = await _search_web_impl(
+                query=query,
+                results=results,
+                engine=engine,
+                search_config=self.search_config
+            )
+            
+            # Format results as markdown
+            markdown_results = []
+            for result in search_results:
+                title = result.get('title', 'No title')
+                url = result.get('url', '')
+                description = result.get('description', 'No description available')
+                markdown_results.append(f"### [{title}]({url})\n{description}\n")
+                
+            return "\n".join(markdown_results) if markdown_results else "No search results found."
             
         @self.agent.tool_plain
         async def visit_webpages(urls: List[str]) -> List[Tuple[str, Optional[str]]]:
@@ -70,7 +86,7 @@ class WebResearchAgent(BaseAgent):
             Returns:
                 List of (url, content) tuples. Content may be None if extraction fails.
             """
-            return await visit_webpages_impl(urls)
+            return await _visit_webpages_impl(urls)
             
     async def run(self, prompt: str, response_format: Optional[Type[BaseModel]] = None) -> Union[str, dict[str, Any], BaseModel]:
         """Run the agent to perform web research.

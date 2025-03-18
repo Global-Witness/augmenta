@@ -8,14 +8,13 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, Callable, Set
 from dataclasses import dataclass
 
-from augmenta.core.search import _search_web_impl
-from augmenta.core.extractors import _visit_webpages_impl
-from augmenta.core.prompt import format_docs, format_examples
-from augmenta.core.llm.base import BaseAgent, make_request_llm
-from augmenta.core.llm.agent import WebResearchAgent
-from augmenta.core.cache import CacheManager
-from augmenta.core.cache.process import handle_process_resumption, setup_caching, apply_cached_results
-from augmenta.core.config.credentials import CredentialsManager
+from augmenta.tools.search import _search_web_impl
+from augmenta.tools.extractors import _visit_webpages_impl
+from augmenta.utils.prompt_formatter import format_docs, format_examples
+from augmenta.agents.base import BaseAgent, make_request_llm
+from augmenta.agents.agent import WebResearchAgent
+from augmenta.cache import CacheManager
+from augmenta.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 import logfire
 
 REQUIRED_CONFIG_FIELDS: Set[str] = {
@@ -62,7 +61,6 @@ def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
 async def process_row(
     row_data: Dict[str, Any],
     config: Dict[str, Any],
-    credentials: Dict[str, str],
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
@@ -116,7 +114,6 @@ async def process_row(
                 results=config_values["search_results"],
                 engine=config_values["search_engine"],
                 rate_limit=config_values["rate_limit"],
-                credentials=credentials,
                 search_config=config["search"]
             )
             
@@ -195,17 +192,8 @@ async def process_augmenta(
     
     validate_config(config_data)
     
-    # Extract common config values and get credentials
+    # Extract common config values
     config_values = get_config_values(config_data)
-    credentials_manager = CredentialsManager()
-    try:
-        from augmenta.core.search.providers import PROVIDERS
-        required_credentials = PROVIDERS[config_values["search_engine"]].required_credentials
-        credentials = credentials_manager.get_credentials(required_credentials)
-    except KeyError as e:
-        raise AugmentaError(f"Unsupported search engine: {config_values['search_engine']}")
-    except ValueError as e:
-        raise AugmentaError(f"Credentials error: {str(e)}")
     
     df = pd.read_csv(config_data["input_csv"])
     if config_data["query_col"] not in df.columns:
@@ -251,7 +239,6 @@ async def process_augmenta(
             return await process_row(
                 row_data=row,
                 config=config_data,
-                credentials=credentials,
                 cache_manager=cache_manager,
                 process_id=process_id,
                 progress_callback=update_progress,
