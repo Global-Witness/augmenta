@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional, Any, Union
+from typing import List, Tuple, Optional, Any, Union, Dict
 import yaml
 from pydantic_ai.format_as_xml import format_as_xml
 
@@ -68,11 +68,11 @@ def format_xml(obj: Any, *, root_tag: str = "data", item_tag: str = "item", pref
     
     return f"{prefix}\n{xml}" if prefix else xml
 
-def format_docs(scraped_content: List[Tuple[str, Optional[str]]]) -> str:
+def format_docs(scraped_content: List[Dict[str, str]]) -> str:
     """Format scraped content as XML."""
     sources = [
-        {"url": url, "content": content.strip() if content else "No content extracted"}
-        for url, content in scraped_content
+        {"url": item["url"], "content": item["content"].strip() or "No content extracted"}
+        for item in scraped_content
     ]
     return format_xml(
         sources or [{"url": "none", "content": "No content extracted"}],

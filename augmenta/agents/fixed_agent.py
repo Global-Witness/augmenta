@@ -71,11 +71,11 @@ class FixedAgent(BaseAgent):
         raw_results = await visit_webpages(urls)
         
         # 3. Filter valid results and create sources summary
-        valid_urls = [(url, content) for url, content in raw_results if content and content.strip()]
-        sources_summary = [url for url, _ in valid_urls]
+        valid_results = [result for result in raw_results if result["content"].strip()]
+        sources_summary = [result["url"] for result in valid_results]
         
         # 4. Format documents and combine with prompt
-        prompt_with_docs = f"{prompt}\n\n## Documents\n\n{format_docs(valid_urls)}"
+        prompt_with_docs = f"{prompt}\n\n## Documents\n\n{format_docs(valid_results)}"
         
         # 5. Process with LLM
         response = await make_request_llm(

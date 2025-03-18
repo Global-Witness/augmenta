@@ -1,5 +1,5 @@
 import httpx
-from typing import Optional, Final, List, Tuple
+from typing import Optional, Final, List, Tuple, Dict
 from httpx import TimeoutException, RequestError
 from trafilatura import extract
 from trafilatura.settings import use_config
@@ -87,7 +87,7 @@ class TrafilaturaProvider:
             logger.error(f"Trafilatura extraction failed: {str(e)}")
             return None
 
-async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 30) -> List[Tuple[str, Optional[str]]]:
+async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 30) -> List[Dict[str, str]]:
     """Implementation of webpage content extraction.
     
     Args:
@@ -96,25 +96,28 @@ async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 
         timeout: Timeout in seconds for each request
         
     Returns:
-        List of tuples containing (url, extracted_content)
+        List of dictionaries containing 'url' and 'content' fields
     """
     http_provider = HTTPProvider()
     trafilatura_provider = TrafilaturaProvider()
 
-    async def process_url(url: str) -> Tuple[str, Optional[str]]:
+    async def process_url(url: str) -> Dict[str, str]:
         try:
             # First get HTML content
             html_content = await http_provider.get_content(url, timeout)
             if not html_content:
-                return url, None
+                return {"url": url, "content": ""}
                 
             # Then extract meaningful content from HTML
             extracted = await trafilatura_provider.get_content(html_content, timeout)
-            return url, extracted
+            return {
+                "url": url,
+                "content": extracted if extracted else ""
+            }
             
         except Exception as e:
             logger.error(f"Error processing {url}: {str(e)}")
-            return url, None
+            return {"url": url, "content": ""}
 
     # Process URLs concurrently with a limit on max workers
     semaphore = asyncio.Semaphore(max_workers)
