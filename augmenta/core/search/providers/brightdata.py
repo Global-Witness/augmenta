@@ -5,12 +5,13 @@ from .base import SearchProvider
 class BrightDataSearchProvider(SearchProvider):
     """BrightData Google Search API provider."""
     
-    required_credentials = {'BRIGHTDATA_API_KEY'}
+    required_credentials = {'BRIGHTDATA_API_KEY', 'BRIGHTDATA_ZONE'}
     BASE_URL = "https://api.brightdata.com/request"
     
     def __init__(self, credentials: Dict[str, str]):
         super().__init__(credentials)
         self.api_key = credentials.get('BRIGHTDATA_API_KEY')
+        self.zone = credentials.get('BRIGHTDATA_ZONE')
 
     async def _search_implementation(self, query: str, results: int) -> List[Dict[str, str]]:
         """Execute search and return list of result URLs."""
@@ -25,7 +26,7 @@ class BrightDataSearchProvider(SearchProvider):
         from urllib.parse import quote
         
         json_data = {
-            "zone": "augmenta",
+            "zone": self.zone,
             "url": f"https://www.google.com/search?q={quote(query)}&num={min(results, 20)}&brd_json=1",
             "format": "raw"
         }
