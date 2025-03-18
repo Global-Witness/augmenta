@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from ..tools.search_web import search_web
 from ..tools.visit_webpages import visit_webpages
 from ..utils.prompt_formatter import format_docs
-from .base_agent import BaseAgent, make_request_llm
+from .base_agent import BaseAgent
 
 class FixedAgent(BaseAgent):
     """An agent that implements a fixed for web research.
@@ -77,15 +77,10 @@ class FixedAgent(BaseAgent):
         prompt_with_docs = f"{prompt}\n\n## Documents\n\n{format_docs(valid_results)}"
         
         # 5. Process with LLM
-        response = await make_request_llm(
+        response = await self.complete(
             prompt_system=self.system_prompt,
             prompt_user=prompt_with_docs,
-            model=self.model,
-            response_format=response_format,
-            verbose=self.verbose,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            rate_limit=self.rate_limit
+            response_format=response_format
         )
         
         # Add sources to response if it's a dict
