@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, abstractproperty
-from typing import Optional, List, Dict, Set, ClassVar, Dict, Any
+from typing import Optional, List, Dict, Set, ClassVar, Dict, Any, Union
 import httpx
 from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 from augmenta.utils.limiter import RateLimitManager
@@ -39,7 +39,7 @@ class SearchProvider(ABC):
         """Normalize URL by removing tracking parameters."""
         return url.split("?")[0] if "?" in url else url
 
-    async def _make_request(self, url: str, method: str = "GET", **kwargs) -> Optional[dict | str]:
+    async def _make_request(self, url: str, method: str = "GET", **kwargs) -> Optional[Union[dict, str]]:
         """Make HTTP request with retry logic."""
         logger.debug(f"Making {method} request to {url}")
         async for attempt in AsyncRetrying(stop=stop_after_attempt(3), wait=wait_fixed(2)):
