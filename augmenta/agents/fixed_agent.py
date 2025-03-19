@@ -1,5 +1,6 @@
 from typing import List, Optional, Type, Union, Any, Tuple
 from pydantic import BaseModel
+import logfire
 
 from ..tools.search_web import search_web
 from ..tools.visit_webpages import visit_webpages
@@ -24,7 +25,7 @@ class FixedAgent(BaseAgent):
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        system_prompt: str = "You are a web research assistant analysing search results."
+        system_prompt: str = "You are a web research assistant."
     ):
         """Initialize the workflow agent.
         
@@ -48,12 +49,14 @@ class FixedAgent(BaseAgent):
     async def run(
         self,
         prompt: str,
+        query: str,
         response_format: Optional[Type[BaseModel]] = None
     ) -> Union[str, dict[str, Any], BaseModel]:
         """Run the fixed workflow to research and analyse.
         
         Args:
             prompt: The research query or task
+            query: The actual search query to use for web search
             response_format: Optional Pydantic model for structured output
             
         Returns:
@@ -62,29 +65,31 @@ class FixedAgent(BaseAgent):
             - dict if response_format but response not valid
             - Pydantic model instance if response_format and valid
         """
-        # 1. Execute search
-        search_results = await search_web(prompt)
-        urls = [result['url'] for result in search_results]
+        # Create a span for the entire processing
+        with logfire.span(f"Processing {query}", prompt=prompt):
+            # 1. Execute search using the actual query
+            search_results = await search_web(query)
+            urls = [result['url'] for result in search_results]
+            # 2. Extract content
+            raw_results = await visit_webpages(urls)
         
-        # 2. Extract content
-        raw_results = await visit_webpages(urls)
-        
-        # 3. Filter valid results and create sources summary
-        valid_results = [result for result in raw_results if result["content"].strip()]
-        sources_summary = [result["url"] for result in valid_results]
-        
-        # 4. Format documents and combine with prompt
-        prompt_with_docs = f"{prompt}\n\n## Documents\n\n{format_docs(valid_results)}"
-        
-        # 5. Process with LLM
-        response = await self.complete(
-            prompt_system=self.system_prompt,
-            prompt_user=prompt_with_docs,
-            response_format=response_format
-        )
-        
-        # Add sources to response if it's a dict
-        if isinstance(response, dict):
-            response['augmenta_sources'] = "\n".join(sources_summary)
+            # 3. Filter valid results and create sources summary
+            valid_results = [result for result in raw_results if result.get("content", "").strip()]
+
+            sources_summary = [result["url"] for result in valid_results]
             
-        return response
+            # 4. Format documents and combine with prompt
+            prompt_with_docs = f"{prompt}\n\n## Documents\n\n{format_docs(valid_results)}"
+            
+            # 5. Process with LLM
+            response = await self.complete(
+                prompt_system=self.system_prompt,
+                prompt_user=prompt_with_docs,
+                response_format=response_format
+            )
+            
+            # Add sources to response if it's a dict
+            if isinstance(response, dict):
+                response['augmenta_sources'] = "\n".join(sources_summary)
+            
+            return response

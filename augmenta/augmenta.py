@@ -161,7 +161,10 @@ async def process_row(
                 prompt_user = f'{prompt_user}\n\n{examples_text}'
         
         # Run prompt using the provided agent
-        response = await agent.run(prompt_user, response_format=response_format)
+        if isinstance(agent, FixedAgent):
+            response = await agent.run(prompt_user, query=query, response_format=response_format)
+        else:
+            response = await agent.run(prompt_user, response_format=response_format)
         
         # Handle caching if enabled
         if cache_manager and process_id:
