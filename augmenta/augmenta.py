@@ -4,7 +4,7 @@ import json
 import asyncio
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any, Callable, Type
+from typing import Optional, Tuple, Dict, Any, Callable, Type, Union
 from dataclasses import dataclass
 
 from augmenta.utils.prompt_formatter import format_examples
@@ -29,7 +29,7 @@ class AugmentaError(Exception):
 
 
 async def process_augmenta(
-    config_path: str | Path,
+    config_path: Union[str, Path],
     cache_enabled: bool = True,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[int, int, str], None]] = None,

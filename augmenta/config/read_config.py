@@ -1,7 +1,7 @@
 """Configuration handling for the Augmenta package."""
 
 import yaml
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Union
 from pathlib import Path
 
 # Store loaded config
@@ -37,7 +37,7 @@ def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
         "search_results": config["search"]["results"]
     }
 
-def load_config(config_path: str | Path) -> Dict[str, Any]:
+def load_config(config_path: Union[str, Path]) -> Dict[str, Any]:
     """Load and validate configuration from a YAML file.
     
     Args:
