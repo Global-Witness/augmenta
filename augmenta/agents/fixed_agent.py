@@ -8,7 +8,7 @@ from ..utils.prompt_formatter import format_docs
 from .base_agent import BaseAgent
 
 class FixedAgent(BaseAgent):
-    """An agent that implements a fixed for web research.
+    """An agent that implements a fixed approach for web research.
     
     Unlike the AutonomousAgent which makes its own decisions, this agent
     follows a predetermined workflow:
@@ -27,7 +27,7 @@ class FixedAgent(BaseAgent):
         verbose: bool = False,
         system_prompt: str = "You are a web research assistant."
     ):
-        """Initialize the workflow agent.
+        """Initialize the fixed agent.
         
         Args:
             model: The LLM model identifier

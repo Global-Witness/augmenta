@@ -1,8 +1,7 @@
 import httpx
 from typing import Optional, Final, List, Tuple, Dict
 from httpx import TimeoutException, RequestError
-from trafilatura import extract
-from trafilatura.settings import use_config
+from markitdown import MarkItDown
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -37,12 +36,7 @@ class HTTPProvider:
                     logger.warning(f"HTTP {response.status_code} for {url}")
                     return None
                 
-                if not response.headers.get('content-type', '').startswith('text/'):
-                    logger.warning(f"Unsupported content type for {url}")
-                    return None
-                
-                content = response.text
-                return content if content else None
+                return url
                 
         except TimeoutException as e:
             logger.error(f"Timeout error for {url}: {str(e)}")
@@ -52,38 +46,6 @@ class HTTPProvider:
             return None
         except Exception as e:
             logger.error(f"Unexpected error for {url}: {str(e)}")
-            return None
-
-class TrafilaturaProvider:
-    """Provider that extracts text content using Trafilatura."""
-    
-    def __init__(self):
-        self.config = use_config()
-        self.config.set("DEFAULT", "MIN_EXTRACTED_SIZE", "50")
-        self.config.set("DEFAULT", "MIN_OUTPUT_SIZE", "50")
-    
-    async def get_content(self, html_content: str, timeout: int = 30) -> Optional[str]:
-        """Extract text content from HTML using trafilatura.
-        
-        Args:
-            html_content: The HTML content to extract text from
-            timeout: Not used, kept for interface consistency
-            
-        Returns:
-            Optional[str]: Extracted markdown text if successful, None otherwise
-        """
-        try:
-            extracted = extract(
-                html_content,
-                config=self.config,
-                output_format="markdown",
-                include_tables=True
-            )
-            
-            return extracted if extracted and len(extracted) >= 50 else None
-            
-        except Exception as e:
-            logger.error(f"Trafilatura extraction failed: {str(e)}")
             return None
 
 async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 30) -> List[Dict[str, str]]:
@@ -98,20 +60,21 @@ async def visit_webpages(urls: List[str], max_workers: int = 10, timeout: int = 
         List of dictionaries containing 'url' and 'content' fields
     """
     http_provider = HTTPProvider()
-    trafilatura_provider = TrafilaturaProvider()
+    md = MarkItDown(enable_plugins=False)  # Create single instance
 
     async def process_url(url: str) -> Dict[str, str]:
         try:
-            # First get HTML content
-            html_content = await http_provider.get_content(url, timeout)
-            if not html_content:
+            # First verify URL is accessible
+            result = await http_provider.get_content(url, timeout)
+            if not result:
                 return {"url": url, "content": ""}
                 
-            # Then extract meaningful content from HTML
-            extracted = await trafilatura_provider.get_content(html_content, timeout)
+            # Convert content using markitdown
+            converted = md.convert(url)
+            
             return {
                 "url": url,
-                "content": extracted if extracted else ""
+                "content": converted.text_content if converted else ""
             }
             
         except Exception as e:
