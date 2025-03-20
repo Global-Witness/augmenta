@@ -48,8 +48,8 @@ class DuckDuckGoSearchProvider(SearchProvider):
             if not url_elem or not title_elem:
                 continue
                 
-            url = self._normalize_url(url_elem[0])
-            if url in seen_urls or "duckduckgo.com/y.js?ad" in url:
+            url = url_elem[0]
+            if url in seen_urls or "duckduckgo.com/y.js" in url:
                 continue
                 
             search_results.append({

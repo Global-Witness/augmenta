@@ -41,7 +41,7 @@ class GoogleSearchProvider(SearchProvider):
         items = response_data.get("items", [])
         return [
             {
-                "url": self._normalize_url(item["link"]),
+                "url": item["link"],
                 "title": item.get("title", ""),
                 "description": item.get("snippet", "")
             }

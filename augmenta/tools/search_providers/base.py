@@ -34,11 +34,6 @@ class SearchProvider(ABC):
         if missing:
             raise ValueError(f"Missing required credentials: {missing}")
 
-    @staticmethod
-    def _normalize_url(url: str) -> str:
-        """Normalize URL by removing tracking parameters."""
-        return url.split("?")[0] if "?" in url else url
-
     async def _make_request(self, url: str, method: str = "GET", **kwargs) -> Optional[Union[dict, str]]:
         """Make HTTP request with retry logic."""
         logger.debug(f"Making {method} request to {url}")
