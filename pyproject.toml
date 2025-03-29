@@ -20,6 +20,7 @@ dependencies = [
     'markitdown[all]>=0.1.0a5',
     "aiolimiter>=1.2.0",
     "tenacity>=9.0.0",
+    "pydantic-ai-slim[mcp]>=0.0.46",
 ]
 
 [project.scripts]
@@ -42,3 +43,6 @@ logfire = ["pydantic-ai[logfire]"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["augmenta*"]
+
+[tool.uv.workspace]
+members = ["docs/examples/maps/mcp-client"]

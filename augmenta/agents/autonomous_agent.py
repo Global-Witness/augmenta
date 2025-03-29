@@ -1,5 +1,6 @@
 from typing import Optional, Type, Union, Any
 from pydantic import BaseModel
+from pydantic_ai.mcp import MCPServerStdio
 from ..tools.search_web import search_web
 from ..tools.visit_webpages import visit_webpages
 from .base_agent import BaseAgent
@@ -26,13 +27,16 @@ class AutonomousAgent(BaseAgent):
             verbose: Whether to enable verbose logging with logfire
             system_prompt: Default system prompt for the agent
         """
+        server = MCPServerStdio('uvx', ['mcp-server-fetch-python'])
+
         super().__init__(
             model=model,
             temperature=temperature,
             rate_limit=rate_limit,
             max_tokens=max_tokens,
             verbose=verbose,
-            tools=[search_web, visit_webpages]
+            tools=[search_web, visit_webpages],
+            mcp_servers=[server]
         )
         self.system_prompt = system_prompt
             

@@ -1,0 +1,5 @@
+mcpServers:
+  - name: mcp-server-fetch-python
+    command: uvx
+    args:
+      - mcp-server-fetch-python

@@ -24,7 +24,8 @@ class BaseAgent:
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        tools: Optional[list] = None
+        tools: Optional[list] = None,
+        mcp_servers: Optional[list] = None
     ):
         """Initialize the base agent.
         
@@ -46,7 +47,8 @@ class BaseAgent:
         self.agent = Agent(
             model,
             model_settings=model_settings,
-            tools=tools or []
+            tools=tools or [],
+            mcp_servers=mcp_servers or []
         )
         self.model = model
         self.temperature = temperature
@@ -124,11 +126,18 @@ class BaseAgent:
             self.agent.system_prompt = prompt_system
             
             # Run the agent with the appropriate parameters
-            result = await self.agent.run(
-                prompt_user,
-                result_type=response_format,
-                model_settings=model_settings
-                # usage_limits=UsageLimits(request_limit=5)
+            # result = await self.agent.run(
+            #     prompt_user,
+            #     result_type=response_format,
+            #     model_settings=model_settings
+            #     # usage_limits=UsageLimits(request_limit=5)
+            # )
+
+            async with self.agent.run_mcp_servers():
+                result = await self.agent.run(
+                    prompt_user,
+                    result_type=response_format,
+                    model_settings=model_settings
             )
 
             # Return the appropriate result format
