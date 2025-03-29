@@ -9,10 +9,10 @@ search:
   engine: duckduckgo
   results: 20
 mcpServers:
-  - name: mcp-server-fetch-python
+  - name: fetch
     command: uvx
     args:
-      - mcp-server-fetch-python
+      - mcp-server-fetch
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
