@@ -25,6 +25,19 @@ def validate_config(config: Dict[str, Any]) -> None:
         raise ValueError("'search' must be a dictionary")
     if not isinstance(config.get("prompt"), dict):
         raise ValueError("'prompt' must be a dictionary")
+        
+    # Validate MCP servers if present
+    if "mcpServers" in config:
+        if not isinstance(config["mcpServers"], list):
+            raise ValueError("'mcpServers' must be a list")
+            
+        for server in config["mcpServers"]:
+            if not isinstance(server, dict):
+                raise ValueError("Each MCP server must be a dictionary")
+            if not all(k in server for k in ("name", "command", "args")):
+                raise ValueError("Each MCP server must have 'name', 'command' and 'args' fields")
+            if not isinstance(server["args"], list):
+                raise ValueError("MCP server 'args' must be a list")
 
 def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
     """Extract commonly used config values."""

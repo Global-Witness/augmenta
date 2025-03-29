@@ -1,11 +1,12 @@
-from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal
+from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal, List
 from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import Agent
 from pydantic_ai.usage import UsageLimits
+from pydantic_ai.mcp import MCPServerStdio
 import logfire
-from pydantic_ai import Agent
+from ..tools.mcp import load_mcp_servers
 
 Agent.instrument_all()
 
@@ -36,6 +37,7 @@ class BaseAgent:
             max_tokens: Optional maximum tokens for response
             verbose: Whether to enable verbose logging with logfire
             tools: Optional list of tool functions to register
+            mcp_servers: Optional list of pre-configured MCP servers (overrides config)
         """
         # Create model settings with all available parameters
         model_settings = {'temperature': temperature}
@@ -44,11 +46,19 @@ class BaseAgent:
         if max_tokens is not None:
             model_settings['max_tokens'] = max_tokens
             
+        # Load MCP servers from config if not provided explicitly
+        if mcp_servers is None:
+            try:
+                mcp_servers = load_mcp_servers()
+            except RuntimeError:
+                # Config not loaded yet, proceed without MCP servers
+                mcp_servers = []
+            
         self.agent = Agent(
             model,
             model_settings=model_settings,
             tools=tools or [],
-            mcp_servers=mcp_servers or []
+            mcp_servers=mcp_servers
         )
         self.model = model
         self.temperature = temperature
