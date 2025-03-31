@@ -4,7 +4,6 @@ agent: autonomous
 model:
   provider: openai
   name: gpt-4o-mini
-  max_tokens: 20000
 query_col: city
 search:
   engine: duckduckgo
@@ -15,9 +14,6 @@ mcpServers:
     args:
       - "-y"
       - "@modelcontextprotocol/server-google-maps"
-    env:
-      - GOOGLE_MAPS_API_KEY:
-        - AIzaSyDh5U0Sg60pzPrudzo7deXTcGgRN0mCoWY
 prompt:
   system: You are an expert researcher who excels at using Google Maps.
   user: |

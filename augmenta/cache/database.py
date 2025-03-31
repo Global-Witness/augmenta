@@ -2,9 +2,17 @@
 
 import sqlite3
 from contextlib import contextmanager
-from typing import Generator
+from typing import Generator, Any
 from pathlib import Path
 from datetime import datetime
+
+def adapt_datetime(dt: datetime) -> str:
+    """Adapt datetime to ISO format string."""
+    return dt.isoformat()
+
+def convert_datetime(val: bytes) -> datetime:
+    """Convert ISO format string to datetime."""
+    return datetime.fromisoformat(val.decode())
 
 from .exceptions import DatabaseError
 
@@ -48,6 +56,10 @@ class DatabaseConnection:
     
     def __init__(self, db_path: Path):
         self.db_path = db_path
+        # Register adapters and converters for datetime
+        sqlite3.register_adapter(datetime, adapt_datetime)
+        sqlite3.register_converter("timestamp", convert_datetime)
+        sqlite3.register_converter("TIMESTAMP", convert_datetime)  # SQLite is case-insensitive
         self._init_db()
     
     def _init_db(self) -> None:
