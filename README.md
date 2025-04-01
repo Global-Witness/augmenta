@@ -122,15 +122,7 @@ Let's break down what each of these fields means.
 
 ### Credentials
 
-If you use a search engine or LLM that requires an API key, you can set those in the YAML file.
-
-```yaml
-api_keys:
-  BRAVE_API_KEY: "XXXXX"
-  OPENAI_API_KEY: "XXXXX"
-```
-
-A better way to manage your credentials is to use environment variables. Create a new file called `.env` in the root directory of your project and add your credentials there.
+If you use a search engine or LLM that requires an API key, you can manage your credentials with environment variables. Create a new file called `.env` in the root directory of your project and add your credentials there.
 
 ```bash
 BRAVE_API_KEY=XXXXX
@@ -150,6 +142,7 @@ To run Augmenta in verbose mode, use the `-v` flag: `augmenta -v config.yaml`. Y
 ## Read more
 
 - [Choosing and configuring a search engine](/docs/search.md)
+- [Adding new tools to Augmenta](/docs/tools.md)
 - [Writing a good prompt](/docs/prompt.md)
 - [How caching works](/docs/cache.md)
 - [An example in action](/docs/examples/donations/README.md)

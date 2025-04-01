@@ -53,7 +53,7 @@ async def process_augmenta(
         "system_prompt": config_data["prompt"]["system"]
     }
     
-    agent_mode = config_data.get("agent", "fixed")
+    agent_mode = config_data.get("agent", "autonomous")
     agent = (AutonomousAgent(**agent_settings) if agent_mode == "autonomous"
             else FixedAgent(**agent_settings))
             
@@ -102,7 +102,8 @@ async def process_augmenta(
             progress_callback(processed, len(rows_to_process), query)
 
     # Process rows concurrently with rate limiting
-    semaphore = asyncio.Semaphore(5)
+    workers = config_data.get("workers", 10)
+    semaphore = asyncio.Semaphore(workers)
     async def process_with_limit(row):
         async with semaphore:
             return await process_row(

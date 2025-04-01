@@ -168,7 +168,7 @@ class CacheManager:
             time_ago = f"{time_diff.seconds // 60} minutes ago"
             
         return (
-            f"Found unfinished process from {time_ago}\n"
+            f"\nFound unfinished process from {time_ago}\n"
             f"Progress: {process.processed_rows}/{process.total_rows} rows "
             f"({process.progress:.1f}%)"
         )
