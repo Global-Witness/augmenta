@@ -42,3 +42,6 @@ logfire = ["pydantic-ai[logfire]"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["augmenta*"]
+
+[tool.uv.workspace]
+members = ["docs/examples/maps/mcp-client"]

@@ -1,15 +1,18 @@
 input_csv: data/donations.csv
 output_csv: data/donations_classified.csv
-agent:
-  enabled: true
+agent: autonomous
 model:
   provider: openai
   name: gpt-4o-mini
 query_col: DonorName
 search:
-  engine: brightdata_google
+  engine: duckduckgo
   results: 20
-  rate_limit: 2
+mcpServers:
+  - name: fetch
+    command: uvx
+    args:
+      - mcp-server-fetch
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
@@ -25,7 +28,7 @@ prompt:
 
     In most cases, you should start by searching for {{DonorName}} without any additional parameters. Where relevant, remove redundant words like "company", "limited", "plc", etc from the search query. If you need to perform another search, try to refine it by adding relevant keywords like "industry", "job", "company", etc. Note that each case will be different, so be flexible and adaptable. Unless necessary, limit your research to two or three searches.
 
-    With each search, select a few sources that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
+    With each search, select a few sources with `mcp-server-fetch-python` that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
     
     Now, please proceed with your analysis and classification of {{DonorName}}.    
 structure:

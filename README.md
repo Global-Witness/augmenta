@@ -6,7 +6,7 @@
 [![Changelog](https://img.shields.io/github/v/release/Global-Witness/augmenta?include_prereleases&label=changelog)](https://github.com/Global-Witness/augmenta/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/Global-Witness/augmenta/blob/main/LICENSE)
 
-Augmenta is a tool for enhancing datasets with search data, parsed by AI.
+Augmenta is a tool for enhancing datasets with AI-assisted tools.
 
 ## Why?
 
@@ -16,7 +16,31 @@ Augmenta aims to address this by using search data to improve the reliability of
 
 ## Installation
 
-First, make sure you have Python 3.8 or later and [`pipx`](https://pipx.pypa.io/latest/installation/#installing-pipx) installed on your computer.
+<details>
+
+<summary>Install with uv/uvx</summary>
+
+If you're using [uv](https://docs.astral.sh/uv/), open your terminal and run the following command to install Augmenta:
+
+```bash
+uvx install git+https://github.com/Global-Witness/augmenta.git
+```
+
+You may wish to do this in a virtual environment to avoid conflicts with other Python packages. This will limit Augmenta's scope to the current directory.
+
+```bash
+uv venv
+source .venv/bin/activate # On Windows: .venv\Scripts\activate
+uv pip install git+https://github.com/Global-Witness/augmenta.git
+```
+
+</details>
+
+<details>
+
+<summary>Install with pip/pipx</summary>
+
+First, make sure you have Python 3.10 or later and [`pipx`](https://pipx.pypa.io/latest/installation/#installing-pipx) installed on your computer.
 
 Then, open your terminal and run the following command to install Augmenta:
 
@@ -31,6 +55,9 @@ python -m venv .venv
 source .venv/bin/activate # On Windows: .venv\Scripts\activate
 pip install git+https://github.com/Global-Witness/augmenta.git
 ```
+
+</details>
+
 
 ## Usage
 
@@ -49,7 +76,8 @@ Here is an example of what it might look like:
 input_csv: original_data.csv
 output_csv: processed_data.csv
 model:
-  name: openai/gpt-4o-mini
+  provider: openai
+  name: gpt-4o-mini
 query_col: org
 search:
   engine: brave
@@ -85,7 +113,7 @@ Let's break down what each of these fields means.
 
 - `input_csv`: The name of the CSV file you want to augment. This file should be in the same project as your `config.yaml` file.
 - `output_csv`: The name of the CSV file you want to create with the augmented data.
-- `model`: The name of the LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both the provider and the model name (ie. `anthropic/claude-3.5-sonnet`).
+- `model`: The name of the LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both the provider and the model name (ie. `anthropic` and `claude-3.5-sonnet`).
 - `query_col`: The name of the column in your input CSV that you want to use as the search query. Augmenta will retrieve results for each row in this column and use them to augment your data.
 - `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md).
 - `prompt`: The instructions you want the AI to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
