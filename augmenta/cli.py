@@ -76,10 +76,16 @@ def main(
         console = ConsolePrinter()
         console.print_banner()
         
+        if not config_path:
+            raise click.UsageError("Config path is required unless using --clean-cache")
+
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_data = yaml.safe_load(f)
+
         # Configure logging based on verbosity
         if verbose:
-            # Only send to logfire if explicitly enabled via env var
-            send_to_logfire = os.getenv('LOGFIRE_SEND_TO_LOGFIRE', '').lower() == 'true'
+            # Only send to logfire if explicitly enabled in config
+            send_to_logfire = config_data.get('logfire', False)
             logfire.configure(
                 scrubbing=False,
                 send_to_logfire='if-token-present' if not send_to_logfire else True
@@ -91,12 +97,6 @@ def main(
         if clean_cache:
             handle_cache_cleanup()
             return
-
-        if not config_path:
-            raise click.UsageError("Config path is required unless using --clean-cache")
-
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config_data = yaml.safe_load(f)
 
         if interactive:
             get_api_keys(config_data, interactive=True)

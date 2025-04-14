@@ -6,19 +6,19 @@
 [![Changelog](https://img.shields.io/github/v/release/Global-Witness/augmenta?include_prereleases&label=changelog)](https://github.com/Global-Witness/augmenta/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/Global-Witness/augmenta/blob/main/LICENSE)
 
-Augmenta is a tool for enhancing datasets with AI-assisted tools.
+Augmenta is an AI agent for enhancing datasets with information from the internet (and [more](/docs/tools.md)).
 
 ## Why?
 
-Large Language Models (LLMs) are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
+Large Language Models (LLMs) can be powerful tools for processing a lot of information very quickly. However, they don't do it entirely accurately. LLMs are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
 
-Augmenta aims to address this by using search data to improve the reliability of the information provided by LLMs. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", and has been shown to significantly improve output quality.
+Augmenta aims to address this shortcoming by allowing LLMs to search and browse the internet for information. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", and has been shown to significantly improve output quality. It does not, however, eliminate the risk of hallucinations entirely, so you should always verify the results before publishing them.
 
 ## Installation
 
 <details>
 
-<summary>Install with uv/uvx</summary>
+<summary>Install with uv/uvx (recommended)</summary>
 
 If you're using [uv](https://docs.astral.sh/uv/), open your terminal and run the following command to install Augmenta:
 
@@ -62,82 +62,152 @@ pip install git+https://github.com/Global-Witness/augmenta.git
 ## Usage
 
 > [!TIP]
-> If you would rather follow an example, [go here](/docs/examples/donations/README.md).
+> If you would rather follow an example, [go here](https://github.com/Global-Witness/orcl).
 
-Create a new directory for your project and copy the data you want processed into it. Augmenta currently supports CSV files in a [tidy format](https://research-hub.auckland.ac.nz/managing-research-data/organising-and-describing-data/tidy-data).
+Start by creating a new directory for your project. This will contain all your data, configuration files, as well as some temporary files that Augmenta will create while it runs.
+
+Copy the data you want processed into this directory (or a subdirectory). Augmenta currently supports CSV files in a [tidy format](https://research-hub.auckland.ac.nz/managing-research-data/organising-and-describing-data/tidy-data), where each row will contain an entity you want to process (eg. company), and each column will contain a different attribute of that entity (eg. industry, address, revenue, etc.).
 
 ### Configuration file
 
-Create a new file called `config.yaml` and open it in your text editor. Your [YAML](https://en.wikipedia.org/wiki/YAML) file will instruct Augmenta on how you want to use it.
-
-Here is an example of what it might look like:
+The LLM needs instructions on how to process your data. Create a new file called `config.yaml` (you can change the name if you prefer) somewhere in your project directory and open it with a text editor. Copy this into it:
 
 ```yaml
-input_csv: original_data.csv
-output_csv: processed_data.csv
+input_csv: path/to/original_data.csv
+output_csv: path/to/processed_data.csv
 model:
   provider: openai
   name: gpt-4o-mini
-query_col: org
+query_col: DonorName
 search:
-  engine: brave
+  engine: brightdata_google
 prompt:
-  system: You are an expert at classifying companies.
-  user: Please classify whether {{org}} is a for-profit company, and NGO, a government department, or something else.
+  system: You are an expert researcher whose job is to classify organisations based on the industry they belong to.
+  user: |
+    # Instructions
+
+    Your job is to research "{{DonorName}}", a donor to a political party in the UK. Your will determine what industry {{DonorName}} belongs to. The entity could be a company, a trade group, a union, an individual, etc.
+    
+    If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
+
+    We also know that the donor is a {{DonorStatus}}.
+
+    ## Searching guidelines
+
+    In most cases, you should start by searching for {{DonorName}} without any additional parameters. Where relevant, remove redundant words like "company", "limited", "plc", etc from the search query. If you need to perform another search, try to refine it by adding relevant keywords like "industry", "job", "company", etc. Note that each case will be different, so be flexible and adaptable. Unless necessary, limit your research to two or three searches.
+
+    With each search, select a few sources with `mcp-server-fetch-python` that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
+    
+    Now, please proceed with your analysis and classification of {{DonorName}}.
 structure:
-  org_type:
+  industry:
     type: str
-    description: What kind of organisation is it?
+    description: What industry is this organisation or person associated with?
     options:
-      - for-profit
-      - NGO
-      - government department
-      - other
-  other:
+      - Agriculture, Forestry and Fishing
+      - Mining and Quarrying
+      - Manufacturing
+      - Electricity, gas, steam and air conditioning supply
+      - Water supply, sewerage, waste management and remediation activities
+      - Construction
+      - Wholesale and retail trade; repair of motor vehicles and motorcycles
+      - Transportation and storage
+      - Accommodation and food service activities
+      - Information and communication
+      - Financial and insurance activities
+      - Real estate activities
+      - Professional, scientific and technical activities
+      - Administrative and support service activities
+      - Public administration and defence; compulsory social security
+      - Education
+      - Human health and social work activities
+      - Arts, entertainment and recreation
+      - Political group
+      - NGO or think-tank
+      - Trade union
+      - Other
+      - Don't know
+  explanation:
     type: str
-    description: If other, what is it?
+    description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
 examples:
-  - input: Microsoft
+  - input: "Charles A Daniel-Hobbs"
     output:
-      org_type: for-profit company
-  - input: Global Witness
+      industry: Financial and insurance activities
+      explanation: |
+        According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
+        
+        A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
+  - input: "Unite the Union"
     output:
-      org_type: NGO
-  - input: BBC
+      industry: Trade union
+      explanation: |
+        Unite is [one of the two largest trade unions in the UK](https://en.wikipedia.org/wiki/Unite_the_Union), with over 1.2 million members. It represents various industries, such as construction, manufacturing, transport, logistics and other sectors.
+  - input: "Google UK Limited"
     output:
-      org_type: other
-      other: public service broadcaster
+      industry: Information and communication
+      explanation: |
+        Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
+
+        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
+  - input: "John Smith"
+    output:
+      industry: Don't know
+      explanation: |
+        The documents about John Smith refer to multiple people (a [British polician](https://en.wikipedia.org/wiki/John_Smith_(Labour_Party_leader)), an [explorer](https://en.wikipedia.org/wiki/John_Smith_(explorer)), a [singer-songwriter](https://johnsmithjohnsmith.com/)), so there's no way to accurately assess what industry this particular individual belongs to.
 ```
 
-Let's break down what each of these fields means.
+You will need to edit this file to suit your project. Let's break all this down:
 
-- `input_csv`: The name of the CSV file you want to augment. This file should be in the same project as your `config.yaml` file.
-- `output_csv`: The name of the CSV file you want to create with the augmented data.
-- `model`: The name of the LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both the provider and the model name (ie. `anthropic` and `claude-3.5-sonnet`).
-- `query_col`: The name of the column in your input CSV that you want to use as the search query. Augmenta will retrieve results for each row in this column and use them to augment your data.
-- `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md).
-- `prompt`: The instructions you want the AI to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
+- `input_csv` and `output_csv` are the names of the data you want to process and where you want to save the results, respectively.
+- `model`: The LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both a `provider` and model `name` (ie. `anthropic` and `claude-3.5-sonnet`). You will also likely need to set up an API key (see [credentials below](#credentials)).
+- `query_col`: The name of the column in your input CSV that you want to use as the main search term (eg. company name).
+- `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md). You will also likely need to set up an API key here (see [credentials](#credentials)).
+- `prompt`: LLMs take in a [system prompt](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts) and a user prompt. Think of the system prompt as explaining to the LLM what its role is, and the user prompt as the instructions you want it to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
 - `structure`: The structure of the output data. You can think of this as the columns you want added to your original CSV.
-- `examples`: Examples of the output data. These will help the AI better understand what you're looking for.
+- `examples`: Examples of the output data. These will help the AI better understand what you're trying to do.
 
 ### Credentials
 
-If you use a search engine or LLM that requires an API key, you can manage your credentials with environment variables. Create a new file called `.env` in the root directory of your project and add your credentials there.
+You don't want to store API keys in your configuration file, as they are meant to be kept secret and it would make it less safe to share your project with others. Instead, you can use environment variables to store your credentials.
+
+Create a new file called `.env` (just the extension, no file name) in the root directory of your project. Open it in a text editor and add your credentials there. They can look something like this, depending on the services you are using:
 
 ```bash
-BRAVE_API_KEY=XXXXX
 OPENAI_API_KEY=XXXXX
+BRIGHTDATA_API_KEY=XXXXX
+BRIGHTDATA_ZONE=XXXXX
 ```
-
-This will keep your credentials out of your configuration file and make it easier to share your project with others, while keeping your keys to yourself.
 
 ### Running Augmenta
 
-Save `config.yaml` and `.env`, and open a terminal window in the root directory of your project. Run `augmenta config.yaml` to get started.
+Make sure you have saved both your `config.yaml` and `.env` files. Open a **new** terminal window in the root directory of your project and run the following command:
+
+```bash
+augmenta config.yaml
+```
+
+It might be a few seconds before you see any output, but once it does, you will see a progress bar.
 
 By default, Augmenta will save your progress so that you can resume if the process gets interrupted at any point. You can find options for working with the cache [here](docs/cache.md).
 
-To run Augmenta in verbose mode, use the `-v` flag: `augmenta -v config.yaml`. You can also add `LOGFIRE_SEND_TO_LOGFIRE=true` to your `.env` file to send logs to [logfire](https://logfire.pydantic.dev/), making it easier to observe what's happening.
+Start with a subset of your data (5-10 rows) to test your configuration and that you are happy with the results. [Adjust your prompt often](docs/prompt.md). You can then rerun Augmenta on the full dataset.
+
+#### Monitoring
+
+One issue with LLMs is that they are non-deterministic. Compared to traditional software, where you can expect the same input to produce the same predictable output every time, AI models are black boxes.
+
+Augmenta uses `logfire` to observe how processes are running. [Sign up for a free account](https://logfire.pydantic.dev/) and make sure you have it [set up on your device](https://logfire.pydantic.dev/docs/).
+
+Add `logfire: true` to your YAML and run Augmenta in verbose mode:
+
+```bash
+augmenta -v config.yaml
+```
+
+If everything is set up correctly, you should have a link to your logfire dashboard in the terminal. You will be able to monitor how Augmenta is running, which tools are using, any potential errors or inconsistencies, etc.
+
+![Screenshot of a Logfire dashboard showing an Augmenta run](docs/logfire-demo.png "Logfire demo")
 
 ## Read more
 
