@@ -14,68 +14,81 @@
         --bg-medium: #e9ecef;
         --text-dark: #212529;
         --text-muted: #6c757d;
-        --border: #dee2e6;
-        --radius: 0.3rem;
+        --border: #e2e8f0;
+        --radius: 0.5rem;
+        --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
       }
     
       body {
-        font-family: system-ui, -apple-system, sans-serif;
-        line-height: 1.6;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.5;
         background: var(--bg-light);
         color: var(--text-dark);
         margin: 0;
         padding: 0;
-        font-size: 16px;
+        font-size: 15px;
       }
     
       .container {
-        max-width: 900px;
+        max-width: 800px;
         margin: 2rem auto;
-        padding: 1.5rem 2rem;
+        padding: 1.5rem;
         background: #fff;
         border-radius: var(--radius);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: var(--shadow);
       }
     
       h1 {
         color: var(--primary);
-        margin-bottom: 1.5rem;
+        margin: 0 0 2rem;
         text-align: center;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
       }
     
       #review-area {
         margin-top: 1.5rem;
-        padding: 1.5rem;
+        padding: 1.25rem;
         border: 1px solid var(--border);
         border-radius: var(--radius);
         background: #fff;
+        opacity: 1;
+        transition: opacity 0.2s ease;
+        contain: content;
       }
     
       table {
         width: 100%;
-        border-collapse: collapse;
+        border-collapse: separate;
+        border-spacing: 0;
         margin-bottom: 1.5rem;
         table-layout: fixed;
       }
     
       td {
-        border-bottom: 1px solid var(--border);
-        padding: 12px 10px;
+        padding: 0.75rem 1rem;
         text-align: left;
         vertical-align: top;
         word-wrap: break-word;
+        border-bottom: 1px solid var(--border);
+        line-height: 1.6;
       }
     
       tr:last-child td { border-bottom: none; }
     
       td:first-child {
-        width: 25%;
-        font-weight: 500;
+        width: 30%;
+        font-weight: 600;
         color: var(--text-muted);
+        font-size: 0.9375rem;
       }
     
-      td:last-child { width: 75%; }
+      td:last-child {
+        width: 70%;
+        background: var(--bg-light);
+        border-radius: 0.25rem;
+      }
     
       td a {
         color: var(--primary);
@@ -93,33 +106,48 @@
       textarea {
         width: 100%;
         box-sizing: border-box;
-        padding: 10px;
-        margin-bottom: 1rem;
-        border: 1px solid var(--border);
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+        border: 1.5px solid var(--border);
         border-radius: var(--radius);
-        font-size: 1em;
+        font-size: 0.9375rem;
         line-height: 1.5;
         min-height: 80px;
+        transition: border-color 0.15s ease;
+        resize: vertical;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary);
       }
     
       .review-controls {
-        margin-top: 1.5rem;
+        margin-top: 1rem;
         text-align: center;
       }
     
       button {
-        padding: 12px 24px;
-        margin: 0 8px 10px;
+        padding: 0.75rem 1.5rem;
+        margin: 0 0.5rem 0.75rem;
         cursor: pointer;
         border: none;
         border-radius: var(--radius);
-        font-size: 1em;
-        font-weight: 500;
+        font-size: 0.9375rem;
+        font-weight: 600;
         transition: all 0.2s ease;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        box-shadow: var(--shadow);
+        contain: layout style;
       }
     
-      button:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 8px -2px rgba(0,0,0,0.1);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
     
       #btn-true { background: var(--success); color: white; }
       #btn-true:hover { background: #0d854a; }
@@ -135,19 +163,50 @@
         color: var(--text-muted);
         cursor: not-allowed;
         box-shadow: none;
+        transform: none;
       }
     
       #loading-indicator, .error, .info {
-        padding: 12px 15px;
+        padding: 1rem 1.25rem;
         margin-bottom: 1.5rem;
         border-radius: var(--radius);
         border: 1px solid transparent;
         text-align: center;
+        font-weight: 500;
+        animation: fadeIn 0.2s ease;
+        contain: content;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
       }
     
-      #loading-indicator { background: var(--bg-medium); color: var(--text-muted); }
-      .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
-      .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+      #loading-indicator {
+        background: var(--bg-medium);
+        color: var(--text-muted);
+      }
+
+      .error {
+        background: #fef2f2;
+        border-color: #fee2e2;
+        color: #991b1b;
+      }
+
+      .info {
+        background: #f0f9ff;
+        border-color: #bae6fd;
+        color: #0369a1;
+      }
+
+      #row-index {
+        color: var(--primary);
+        font-weight: 600;
+      }
+
+      .hidden {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
@@ -155,10 +214,10 @@
       <h1>Augmenta Review</h1>
 
       <div id="loading-indicator">Loading next row...</div>
-      <div id="error-message" class="error"></div>
-      <div id="completion-message" class="info"></div>
+      <div id="error-message" class="error hidden"></div>
+      <div id="completion-message" class="info hidden"></div>
 
-      <div id="review-area" style="display: none;">
+      <div id="review-area" class="hidden">
         <p><strong>Reviewing Row: <span id="row-index"></span></strong></p>
         <table id="row-data-table">
           <tbody></tbody>
@@ -166,11 +225,11 @@
 
         <div class="review-controls">
           <label for="notes">Notes:</label>
-          <textarea id="notes" rows="4"></textarea>
+          <textarea id="notes" rows="4" placeholder="Enter any additional notes here..."></textarea>
           <div>
-            <button id="btn-true" onclick="submitReview('True')">True</button>
-            <button id="btn-false" onclick="submitReview('False')">False</button>
-            <button id="btn-unsure" onclick="submitReview('Unsure')">Unsure</button>
+            <button id="btn-true" onclick="handleReview('True')">True</button>
+            <button id="btn-false" onclick="handleReview('False')">False</button>
+            <button id="btn-unsure" onclick="handleReview('Unsure')">Unsure</button>
           </div>
         </div>
       </div>
@@ -180,40 +239,68 @@
 
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
-      let currentRowIndex = null;
-      let isSubmitting = false;
-      const messageElements = {
+      // State management
+      const state = {
+        currentRowIndex: null,
+        isSubmitting: false,
+        submitDebounceTimer: null,
+        retryCount: 0,
+        maxRetries: 3
+      };
+
+      // DOM Elements cache
+      const elements = {
         error: document.getElementById('error-message'),
         loading: document.getElementById('loading-indicator'),
         completion: document.getElementById('completion-message'),
-        review: document.getElementById('review-area')
+        review: document.getElementById('review-area'),
+        rowIndex: document.getElementById('row-index'),
+        currentRowInput: document.getElementById('current-row-index'),
+        notes: document.getElementById('notes'),
+        table: document.getElementById('row-data-table').getElementsByTagName('tbody')[0],
+        buttons: {
+          true: document.getElementById('btn-true'),
+          false: document.getElementById('btn-false'),
+          unsure: document.getElementById('btn-unsure')
+        }
       };
 
-      // Set up marked renderer
+      // Configure marked for better performance
       const renderer = new marked.Renderer();
-      const originalLinkRenderer = renderer.link;
-
       renderer.link = (href, title, text) => {
-        let link = originalLinkRenderer.call(renderer, href, title, text);
+        const link = marked.Renderer.prototype.link.call(renderer, href, title, text);
         return link.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
       };
 
-      // Set marked options
       marked.setOptions({
         gfm: true,
         breaks: true,
-        sanitize: false
+        sanitize: false,
+        renderer: renderer
       });
 
+      // Utility functions
+      function showElement(element, show = true) {
+        element.classList.toggle('hidden', !show);
+      }
+
       function showMessage(type, text) {
-        Object.entries(messageElements).forEach(([key, el]) => {
-          el.style.display = key === type ? 'block' : 'none';
-          if (key === type && text && key !== 'review') {
-            el.textContent = key === 'error' ? `Error: ${text}` : text;
+        Object.entries(elements).forEach(([key, el]) => {
+          if (key !== 'buttons' && key !== 'table') {
+            showElement(el, key === type);
+            if (key === type && text && key !== 'review') {
+              el.textContent = key === 'error' ? `Error: ${text}` : text;
+            }
           }
         });
       }
 
+      function setButtonsState(disabled) {
+        Object.values(elements.buttons).forEach(btn => btn.disabled = disabled);
+        elements.notes.disabled = disabled;
+      }
+
+      // Data display function with performance optimizations
       function displayRowData(data) {
         if (data.error) return showMessage('error', data.error);
         if (data.message) return showMessage('completion', data.message);
@@ -222,94 +309,109 @@
           return showMessage('error', 'Received invalid data from server.');
         }
 
-        currentRowIndex = data.rowIndex;
-        document.getElementById('current-row-index').value = currentRowIndex;
-        document.getElementById('row-index').textContent = currentRowIndex;
-        document.getElementById('notes').value = '';
+        state.currentRowIndex = data.rowIndex;
+        elements.currentRowInput.value = state.currentRowIndex;
+        elements.rowIndex.textContent = state.currentRowIndex;
+        elements.notes.value = '';
 
-        const tableBody = document.getElementById('row-data-table').getElementsByTagName('tbody')[0];
         const reviewCols = new Set(["Review Status", "Reviewer Email", "Review Timestamp", "Review Notes"]);
-        
         const fragment = document.createDocumentFragment();
+        
+        // Build table rows efficiently
         data.headers.forEach((header, index) => {
           if (header && !reviewCols.has(header)) {
-            const row = document.createElement('tr');
-            const rawData = data.rowData[index] !== null && data.rowData[index] !== undefined 
-              ? String(data.rowData[index]) 
+            const rawData = data.rowData[index] !== null && data.rowData[index] !== undefined
+              ? String(data.rowData[index])
               : '';
-            row.innerHTML = `
-              <td><strong>${header}</strong></td>
-              <td>${marked.parse(rawData, { renderer: renderer })}</td>
-            `;
-            fragment.appendChild(row);
+            
+            if (rawData.trim()) {
+              const row = document.createElement('tr');
+              const headerCell = document.createElement('td');
+              const dataCell = document.createElement('td');
+              
+              headerCell.textContent = header;
+              dataCell.innerHTML = marked.parse(rawData);
+              
+              row.appendChild(headerCell);
+              row.appendChild(dataCell);
+              fragment.appendChild(row);
+            }
           }
         });
-        
-        tableBody.innerHTML = '';
-        tableBody.appendChild(fragment);
-        enableButtons();
-        showMessage('review');
+
+        // Batch DOM updates
+        requestAnimationFrame(() => {
+          elements.table.innerHTML = '';
+          elements.table.appendChild(fragment);
+          setButtonsState(false);
+          showMessage('review');
+        });
       }
 
-      function fetchNextRow() {
+      // Network request functions with retry logic
+      async function fetchNextRow(retry = false) {
+        if (retry) {
+          if (state.retryCount >= state.maxRetries) {
+            return showMessage('error', 'Maximum retry attempts reached. Please refresh the page.');
+          }
+          state.retryCount++;
+        } else {
+          state.retryCount = 0;
+        }
+
         showMessage('loading', 'Fetching next row...');
-        disableButtons();
+        setButtonsState(true);
+
         google.script.run
           .withSuccessHandler(displayRowData)
-          .withFailureHandler(onFailure)
+          .withFailureHandler(error => {
+            console.error("Fetch Failure:", error);
+            setTimeout(() => fetchNextRow(true), 1000 * state.retryCount);
+          })
           .getNextRowToReview();
       }
 
-      function submitReview(decision) {
-        if (isSubmitting) return;
-        isSubmitting = true;
+      // Debounced review submission
+      function handleReview(decision) {
+        if (state.isSubmitting) return;
+        
+        clearTimeout(state.submitDebounceTimer);
+        state.submitDebounceTimer = setTimeout(() => submitReview(decision), 250);
+      }
 
-        const rowIndex = document.getElementById('current-row-index').value;
+      function submitReview(decision) {
+        if (state.isSubmitting) return;
+        state.isSubmitting = true;
+
+        const rowIndex = elements.currentRowInput.value;
         if (!rowIndex) {
-          isSubmitting = false;
+          state.isSubmitting = false;
           return showMessage('error', 'Cannot submit review, row index is missing.');
         }
 
         showMessage('loading', 'Submitting review...');
-        disableButtons();
+        setButtonsState(true);
 
         google.script.run
           .withSuccessHandler(response => {
-            isSubmitting = false;
+            state.isSubmitting = false;
             if (response?.success) {
               fetchNextRow();
             } else {
               showMessage('error', response?.message || 'Failed to submit review');
-              enableButtons();
+              setButtonsState(false);
             }
           })
           .withFailureHandler(error => {
-            isSubmitting = false;
+            state.isSubmitting = false;
             console.error("Submission Failure:", error);
             showMessage('error', 'Failed to submit review: ' + error.message);
-            enableButtons();
+            setButtonsState(false);
           })
-          .submitReview(Number(rowIndex), decision, document.getElementById('notes').value);
+          .submitReview(Number(rowIndex), decision, elements.notes.value);
       }
 
-      function onFailure(error) {
-        isSubmitting = false;
-        console.error("Script Failure:", error);
-        showMessage('error', 'Script error: ' + error.message);
-      }
-
-      function disableButtons() {
-        ['btn-true', 'btn-false', 'btn-unsure', 'notes'].forEach(id => 
-          document.getElementById(id).disabled = true
-        );
-      }
-
-      function enableButtons() {
-        ['btn-true', 'btn-false', 'btn-unsure', 'notes'].forEach(id => 
-          document.getElementById(id).disabled = false
-        );
-      }
-
+      // Initialize
       document.addEventListener('DOMContentLoaded', fetchNextRow);
     </script>
   </body>

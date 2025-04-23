@@ -8,9 +8,11 @@ const CONFIG = {
   TIMESTAMP: "Review Timestamp",
   NOTES: "Review Notes",
   STATUS_IN_PROGRESS: "In Progress",
-  LOCK_TIMEOUT: 30000, // 30 seconds
+  LOCK_TIMEOUT: 10000, // Reduced to 10 seconds
+  CHUNK_SIZE: 1000, // Process data in chunks
   REQUIRED_COLUMNS: ["Review Status", "Reviewer Email", "Review Timestamp", "Review Notes"],
-  VALID_DECISIONS: new Set(["True", "False", "Unsure"])
+  VALID_DECISIONS: new Set(["True", "False", "Unsure"]),
+  CACHE_DURATION: 21600 // 6 hours in seconds
 };
 
 function doGet(e) {
@@ -25,7 +27,7 @@ function doGet(e) {
     SpreadsheetApp.openById(sheetId).getName(); // Test access
     return HtmlService.createTemplateFromFile('Index')
       .evaluate()
-      .setTitle('Sheet Row Reviewer')
+      .setTitle('Augmenta Review')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   } catch (err) {
     Logger.log("Error accessing Sheet ID '%s': %s", sheetId, err);
@@ -36,8 +38,75 @@ function doGet(e) {
 }
 
 /**
+ * Executes a function with a lock and proper cleanup
+ * @param {Function} callback Function to execute under lock
+ * @param {number} timeout Lock timeout in milliseconds
+ * @return {*} Result of the callback function
+ */
+function withLock_(callback, timeout = CONFIG.LOCK_TIMEOUT) {
+  const lock = LockService.getScriptLock();
+  try {
+    if (!lock.tryLock(timeout)) {
+      throw new Error("Could not obtain lock. Server might be busy. Please try again.");
+    }
+    return callback();
+  } finally {
+    if (lock.hasLock()) {
+      lock.releaseLock();
+    }
+  }
+}
+
+/**
+ * Gets cached header indices or generates them if not cached
+ * @param {Sheet} sheet The sheet to get headers from
+ * @return {object} Header indices
+ */
+function getHeaderIndices_(sheet) {
+  const cache = CacheService.getScriptCache();
+  const cacheKey = `header_indices_${sheet.getSheetId()}`;
+  
+  let indices = cache.get(cacheKey);
+  if (indices) {
+    return JSON.parse(indices);
+  }
+
+  const headerData = getOrAddHeaders_(sheet);
+  if (!headerData.success) {
+    throw new Error(headerData.error);
+  }
+
+  cache.put(cacheKey, JSON.stringify(headerData.indices), CONFIG.CACHE_DURATION);
+  return headerData.indices;
+}
+
+/**
+ * Finds the next unreviewed row efficiently
+ * @param {Sheet} sheet The sheet to search
+ * @param {number} statusCol Status column index
+ * @param {number} reviewerCol Reviewer column index
+ * @return {number} Row index or -1 if none found
+ */
+function findNextUnreviewedRow_(sheet, statusCol, reviewerCol) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return -1;
+
+  for (let startRow = 2; startRow <= lastRow; startRow += CONFIG.CHUNK_SIZE) {
+    const endRow = Math.min(startRow + CONFIG.CHUNK_SIZE - 1, lastRow);
+    const range = sheet.getRange(startRow, statusCol, endRow - startRow + 1, 1);
+    const values = range.getValues();
+    
+    const rowIndex = values.findIndex(row => !row[0]);
+    if (rowIndex !== -1) {
+      return startRow + rowIndex;
+    }
+  }
+  return -1;
+}
+
+/**
  * Gets the next available row for review and assigns it to the current user.
- * Uses LockService for concurrency control.
+ * Uses optimized locking and caching strategies.
  * @return {object} Response containing row data or error/message
  */
 function getNextRowToReview() {
@@ -47,77 +116,47 @@ function getNextRowToReview() {
     return { error: "Could not identify the current user. Please ensure you are logged into a Google Account." };
   }
 
-  const lock = LockService.getScriptLock();
-  try {
-    if (!lock.tryLock(CONFIG.LOCK_TIMEOUT)) {
-      Logger.log('Could not obtain lock to get next row.');
-      return { error: "Could not get a lock to find the next row. Server might be busy. Please try again." };
-    }
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
+  const sheet = ss.getActiveSheet();
 
-    const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
-    const sheet = ss.getActiveSheet();
-    const headerData = getOrAddHeaders_(sheet);
+  return withLock_(() => {
+    try {
+      const headerIndices = getHeaderIndices_(sheet);
+      const statusCol = headerIndices[CONFIG.REVIEW_STATUS] + 1;
+      const reviewerCol = headerIndices[CONFIG.REVIEWER_EMAIL] + 1;
 
-    if (!headerData.success) {
-      throw new Error(headerData.error);
-    }
-
-    const lastRow = sheet.getLastRow();
-    if (lastRow <= 1) {
-      return { message: "No data rows found in the sheet." };
-    }
-
-    // Efficiently get status and reviewer columns
-    const statusCol = headerData.indices[CONFIG.REVIEW_STATUS] + 1;
-    const reviewerCol = headerData.indices[CONFIG.REVIEWER_EMAIL] + 1;
-    const reviewRange = sheet.getRange(2, Math.min(statusCol, reviewerCol), lastRow - 1, 
-                                     Math.abs(statusCol - reviewerCol) + 1);
-    const reviewData = reviewRange.getValues();
-
-    // Find first unreviewed row
-    let nextRowIndex = -1;
-    for (let i = 0; i < reviewData.length; i++) {
-      const [status, reviewer] = statusCol < reviewerCol ? reviewData[i] : reviewData[i].reverse();
-      if (!status) {
-        nextRowIndex = i + 2;
-        break;
+      const nextRowIndex = findNextUnreviewedRow_(sheet, statusCol, reviewerCol);
+      if (nextRowIndex === -1) {
+        return { message: "All rows have been reviewed or assigned." };
       }
+
+      // Batch update status and reviewer
+      sheet.getRange(nextRowIndex, statusCol, 1, 2).setValues([[
+        CONFIG.STATUS_IN_PROGRESS,
+        userEmail
+      ]]);
+
+      // Get complete row data outside of critical section
+      const rowRange = sheet.getRange(nextRowIndex, 1, 1, sheet.getLastColumn());
+      const rowData = rowRange.getValues()[0];
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+      Logger.log(`Assigned row ${nextRowIndex} to ${userEmail}`);
+      return {
+        rowIndex: nextRowIndex,
+        headers: headers,
+        rowData: rowData
+      };
+
+    } catch (error) {
+      Logger.log(`Error in getNextRowToReview: ${error}`);
+      return { error: `An error occurred: ${error.message}` };
     }
-
-    if (nextRowIndex === -1) {
-      return { message: "All rows have been reviewed or assigned." };
-    }
-
-    // Assign row to user
-    sheet.getRange(nextRowIndex, statusCol).setValue(CONFIG.STATUS_IN_PROGRESS);
-    sheet.getRange(nextRowIndex, reviewerCol).setValue(userEmail);
-    
-    // Release lock before reading full row data
-    lock.releaseLock();
-
-    // Get complete row data
-    const rowRange = sheet.getRange(nextRowIndex, 1, 1, sheet.getLastColumn());
-    const rowData = rowRange.getValues()[0];
-
-    Logger.log(`Assigned row ${nextRowIndex} to ${userEmail}`);
-    return {
-      rowIndex: nextRowIndex,
-      headers: headerData.headers,
-      rowData: rowData
-    };
-
-  } catch (error) {
-    Logger.log(`Error in getNextRowToReview: ${error}`);
-    return { error: `An error occurred: ${error.message}` };
-  } finally {
-    if (lock.hasLock()) {
-      lock.releaseLock();
-    }
-  }
+  });
 }
 
 /**
- * Submits the review data for a specific row.
+ * Submits the review data for a specific row using batch operations.
  * @param {number} rowIndex Row being reviewed (1-based)
  * @param {string} decision Review decision ('True', 'False', 'Unsure')
  * @param {string} notes Reviewer notes
@@ -135,48 +174,45 @@ function submitReview(rowIndex, decision, notes) {
     return { success: false, message: "Invalid submission data received." };
   }
 
-  try {
-    const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
-    const sheet = ss.getActiveSheet();
-    const headerData = getOrAddHeaders_(sheet);
+  const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
+  const sheet = ss.getActiveSheet();
 
-    if (!headerData.success) {
-      throw new Error(headerData.error);
+  return withLock_(() => {
+    try {
+      const headerIndices = getHeaderIndices_(sheet);
+      const columns = {
+        status: headerIndices[CONFIG.REVIEW_STATUS] + 1,
+        reviewer: headerIndices[CONFIG.REVIEWER_EMAIL] + 1,
+        timestamp: headerIndices[CONFIG.TIMESTAMP] + 1,
+        notes: headerIndices[CONFIG.NOTES] + 1
+      };
+
+      // Batch read for ownership verification
+      const verifyRange = sheet.getRange(rowIndex, columns.reviewer, 1, 2);
+      const [currentReviewer, currentStatus] = verifyRange.getValues()[0];
+      
+      if (currentReviewer !== userEmail || currentStatus !== CONFIG.STATUS_IN_PROGRESS) {
+        Logger.log(`Warning: Row ${rowIndex} submission ownership mismatch. Current: ${currentReviewer}, Status: ${currentStatus}`);
+      }
+
+      // Batch update all fields
+      const range = sheet.getRange(rowIndex, columns.status, 1, 4);
+      range.setValues([[
+        decision,
+        userEmail,
+        new Date(),
+        notes || ""
+      ]]);
+
+      SpreadsheetApp.flush();
+      Logger.log(`Review submitted for row ${rowIndex} by ${userEmail}: ${decision}`);
+      return { success: true };
+
+    } catch (error) {
+      Logger.log(`Error in submitReview for row ${rowIndex}: ${error}`);
+      return { success: false, message: `An error occurred while submitting: ${error.message}` };
     }
-
-    // Get column indices
-    const columns = {
-      status: headerData.indices[CONFIG.REVIEW_STATUS] + 1,
-      reviewer: headerData.indices[CONFIG.REVIEWER_EMAIL] + 1,
-      timestamp: headerData.indices[CONFIG.TIMESTAMP] + 1,
-      notes: headerData.indices[CONFIG.NOTES] + 1
-    };
-
-    // Optional ownership verification
-    const currentReviewer = sheet.getRange(rowIndex, columns.reviewer).getValue();
-    const currentStatus = sheet.getRange(rowIndex, columns.status).getValue();
-    
-    if (currentReviewer !== userEmail || currentStatus !== CONFIG.STATUS_IN_PROGRESS) {
-      Logger.log(`Warning: Row ${rowIndex} submission ownership mismatch. Current: ${currentReviewer}, Status: ${currentStatus}`);
-    }
-
-    // Update all fields at once
-    const range = sheet.getRange(rowIndex, columns.status, 1, 4);
-    range.setValues([[
-      decision,
-      userEmail,
-      new Date(),
-      notes || ""
-    ]]);
-
-    SpreadsheetApp.flush();
-    Logger.log(`Review submitted for row ${rowIndex} by ${userEmail}: ${decision}`);
-    return { success: true };
-
-  } catch (error) {
-    Logger.log(`Error in submitReview for row ${rowIndex}: ${error}`);
-    return { success: false, message: `An error occurred while submitting: ${error.message}` };
-  }
+  });
 }
 
 /**
@@ -213,9 +249,10 @@ function getOrAddHeaders_(sheet) {
         sheet.insertColumnsAfter(currentCols, neededCols - currentCols);
       }
 
-      missingCols.forEach(colName => {
-        sheet.getRange(1, headerIndices[colName] + 1).setValue(colName);
-      });
+      // Batch update for missing headers
+      const headerUpdates = missingCols.map(colName => [colName]);
+      const updateRange = sheet.getRange(1, headerIndices[missingCols[0]] + 1, 1, missingCols.length);
+      updateRange.setValues(headerUpdates);
 
       // Refresh headers after adding new columns
       const updatedHeaders = sheet.getRange(1, 1, 1, neededCols).getValues()[0];
