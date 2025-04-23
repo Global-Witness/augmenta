@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Augmenta Review</title>
+    <style>
+      :root {
+        --primary: #4285F4;
+        --success: #0F9D58;
+        --danger: #DB4437;
+        --warning: #F4B400;
+        --bg-light: #f8f9fa;
+        --bg-medium: #e9ecef;
+        --text-dark: #212529;
+        --text-muted: #6c757d;
+        --border: #dee2e6;
+        --radius: 0.3rem;
+      }
+    
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+        background: var(--bg-light);
+        color: var(--text-dark);
+        margin: 0;
+        padding: 0;
+        font-size: 16px;
+      }
+    
+      .container {
+        max-width: 900px;
+        margin: 2rem auto;
+        padding: 1.5rem 2rem;
+        background: #fff;
+        border-radius: var(--radius);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+    
+      h1 {
+        color: var(--primary);
+        margin-bottom: 1.5rem;
+        text-align: center;
+        font-weight: 500;
+      }
+    
+      #review-area {
+        margin-top: 1.5rem;
+        padding: 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: #fff;
+      }
+    
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+        table-layout: fixed;
+      }
+    
+      td {
+        border-bottom: 1px solid var(--border);
+        padding: 12px 10px;
+        text-align: left;
+        vertical-align: top;
+        word-wrap: break-word;
+      }
+    
+      tr:last-child td { border-bottom: none; }
+    
+      td:first-child {
+        width: 25%;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+    
+      td:last-child { width: 75%; }
+    
+      td a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+    
+      td a:hover { text-decoration: underline; }
+    
+      label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+      }
+    
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px;
+        margin-bottom: 1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 1em;
+        line-height: 1.5;
+        min-height: 80px;
+      }
+    
+      .review-controls {
+        margin-top: 1.5rem;
+        text-align: center;
+      }
+    
+      button {
+        padding: 12px 24px;
+        margin: 0 8px 10px;
+        cursor: pointer;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 1em;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      }
+    
+      button:hover { box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+    
+      #btn-true { background: var(--success); color: white; }
+      #btn-true:hover { background: #0d854a; }
+    
+      #btn-false { background: var(--danger); color: white; }
+      #btn-false:hover { background: #c5392d; }
+    
+      #btn-unsure { background: var(--warning); color: white; }
+      #btn-unsure:hover { background: #e2a000; }
+    
+      button:disabled {
+        background: var(--bg-medium);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+    
+      #loading-indicator, .error, .info {
+        padding: 12px 15px;
+        margin-bottom: 1.5rem;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        text-align: center;
+      }
+    
+      #loading-indicator { background: var(--bg-medium); color: var(--text-muted); }
+      .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+      .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Augmenta Review</h1>
+
+      <div id="loading-indicator">Loading next row...</div>
+      <div id="error-message" class="error"></div>
+      <div id="completion-message" class="info"></div>
+
+      <div id="review-area" style="display: none;">
+        <p><strong>Reviewing Row: <span id="row-index"></span></strong></p>
+        <table id="row-data-table">
+          <tbody></tbody>
+        </table>
+
+        <div class="review-controls">
+          <label for="notes">Notes:</label>
+          <textarea id="notes" rows="4"></textarea>
+          <div>
+            <button id="btn-true" onclick="submitReview('True')">True</button>
+            <button id="btn-false" onclick="submitReview('False')">False</button>
+            <button id="btn-unsure" onclick="submitReview('Unsure')">Unsure</button>
+          </div>
+        </div>
+      </div>
+
+      <input type="hidden" id="current-row-index" value="">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+      let currentRowIndex = null;
+      let isSubmitting = false;
+      const messageElements = {
+        error: document.getElementById('error-message'),
+        loading: document.getElementById('loading-indicator'),
+        completion: document.getElementById('completion-message'),
+        review: document.getElementById('review-area')
+      };
+
+      // Set up marked renderer
+      const renderer = new marked.Renderer();
+      const originalLinkRenderer = renderer.link;
+
+      renderer.link = (href, title, text) => {
+        let link = originalLinkRenderer.call(renderer, href, title, text);
+        return link.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
+      };
+
+      // Set marked options
+      marked.setOptions({
+        gfm: true,
+        breaks: true,
+        sanitize: false
+      });
+
+      function showMessage(type, text) {
+        Object.entries(messageElements).forEach(([key, el]) => {
+          el.style.display = key === type ? 'block' : 'none';
+          if (key === type && text && key !== 'review') {
+            el.textContent = key === 'error' ? `Error: ${text}` : text;
+          }
+        });
+      }
+
+      function displayRowData(data) {
+        if (data.error) return showMessage('error', data.error);
+        if (data.message) return showMessage('completion', data.message);
+        if (!data.rowData?.length || !data.headers?.length || !data.rowIndex) {
+          console.error("Invalid data received:", data);
+          return showMessage('error', 'Received invalid data from server.');
+        }
+
+        currentRowIndex = data.rowIndex;
+        document.getElementById('current-row-index').value = currentRowIndex;
+        document.getElementById('row-index').textContent = currentRowIndex;
+        document.getElementById('notes').value = '';
+
+        const tableBody = document.getElementById('row-data-table').getElementsByTagName('tbody')[0];
+        const reviewCols = new Set(["Review Status", "Reviewer Email", "Review Timestamp", "Review Notes"]);
+        
+        const fragment = document.createDocumentFragment();
+        data.headers.forEach((header, index) => {
+          if (header && !reviewCols.has(header)) {
+            const row = document.createElement('tr');
+            const rawData = data.rowData[index] !== null && data.rowData[index] !== undefined 
+              ? String(data.rowData[index]) 
+              : '';
+            row.innerHTML = `
+              <td><strong>${header}</strong></td>
+              <td>${marked.parse(rawData, { renderer: renderer })}</td>
+            `;
+            fragment.appendChild(row);
+          }
+        });
+        
+        tableBody.innerHTML = '';
+        tableBody.appendChild(fragment);
+        enableButtons();
+        showMessage('review');
+      }
+
+      function fetchNextRow() {
+        showMessage('loading', 'Fetching next row...');
+        disableButtons();
+        google.script.run
+          .withSuccessHandler(displayRowData)
+          .withFailureHandler(onFailure)
+          .getNextRowToReview();
+      }
+
+      function submitReview(decision) {
+        if (isSubmitting) return;
+        isSubmitting = true;
+
+        const rowIndex = document.getElementById('current-row-index').value;
+        if (!rowIndex) {
+          isSubmitting = false;
+          return showMessage('error', 'Cannot submit review, row index is missing.');
+        }
+
+        showMessage('loading', 'Submitting review...');
+        disableButtons();
+
+        google.script.run
+          .withSuccessHandler(response => {
+            isSubmitting = false;
+            if (response?.success) {
+              fetchNextRow();
+            } else {
+              showMessage('error', response?.message || 'Failed to submit review');
+              enableButtons();
+            }
+          })
+          .withFailureHandler(error => {
+            isSubmitting = false;
+            console.error("Submission Failure:", error);
+            showMessage('error', 'Failed to submit review: ' + error.message);
+            enableButtons();
+          })
+          .submitReview(Number(rowIndex), decision, document.getElementById('notes').value);
+      }
+
+      function onFailure(error) {
+        isSubmitting = false;
+        console.error("Script Failure:", error);
+        showMessage('error', 'Script error: ' + error.message);
+      }
+
+      function disableButtons() {
+        ['btn-true', 'btn-false', 'btn-unsure', 'notes'].forEach(id => 
+          document.getElementById(id).disabled = true
+        );
+      }
+
+      function enableButtons() {
+        ['btn-true', 'btn-false', 'btn-unsure', 'notes'].forEach(id => 
+          document.getElementById(id).disabled = false
+        );
+      }
+
+      document.addEventListener('DOMContentLoaded', fetchNextRow);
+    </script>
+  </body>
+</html>

@@ -62,7 +62,7 @@ pip install git+https://github.com/Global-Witness/augmenta.git
 ## Usage
 
 > [!TIP]
-> If you would rather follow an example, [go here](https://github.com/Global-Witness/orcl).
+> If you would rather follow an example, [go here](https://github.com/Global-Witness/orcl?tab=readme-ov-file#augmenta).
 
 Start by creating a new directory for your project. This will contain all your data, configuration files, as well as some temporary files that Augmenta will create while it runs.
 
