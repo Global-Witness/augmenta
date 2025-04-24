@@ -304,14 +304,14 @@
       function displayRowData(data) {
         if (data.error) return showMessage('error', data.error);
         if (data.message) return showMessage('completion', data.message);
-        if (!data.rowData?.length || !data.headers?.length || !data.rowIndex) {
+        if (!data.rowData?.length || !data.headers?.length) {
           console.error("Invalid data received:", data);
-          return showMessage('error', 'Received invalid data from server.');
+          return showMessage('error', 'Invalid data from server');
         }
 
         state.currentRowIndex = data.rowIndex;
-        elements.currentRowInput.value = state.currentRowIndex;
-        elements.rowIndex.textContent = state.currentRowIndex;
+        elements.currentRowInput.value = data.rowIndex;
+        elements.rowIndex.textContent = data.rowIndex;
         elements.notes.value = '';
 
         const reviewCols = new Set(["Review Status", "Reviewer Email", "Review Timestamp", "Review Notes"]);
@@ -374,41 +374,43 @@
       // Debounced review submission
       function handleReview(decision) {
         if (state.isSubmitting) return;
-        
-        clearTimeout(state.submitDebounceTimer);
-        state.submitDebounceTimer = setTimeout(() => submitReview(decision), 250);
+        submitAndGetNext(decision);
       }
 
-      function submitReview(decision) {
+      function submitAndGetNext(decision) {
         if (state.isSubmitting) return;
         state.isSubmitting = true;
 
         const rowIndex = elements.currentRowInput.value;
         if (!rowIndex) {
           state.isSubmitting = false;
-          return showMessage('error', 'Cannot submit review, row index is missing.');
+          return showMessage('error', 'Row index missing');
         }
 
-        showMessage('loading', 'Submitting review...');
+        showMessage('loading', 'Processing...');
         setButtonsState(true);
 
         google.script.run
           .withSuccessHandler(response => {
             state.isSubmitting = false;
             if (response?.success) {
-              fetchNextRow();
+              if (response.message) {
+                showMessage('completion', response.message);
+              } else {
+                displayRowData(response);
+              }
             } else {
-              showMessage('error', response?.message || 'Failed to submit review');
+              showMessage('error', response?.message || 'Operation failed');
               setButtonsState(false);
             }
           })
           .withFailureHandler(error => {
             state.isSubmitting = false;
-            console.error("Submission Failure:", error);
-            showMessage('error', 'Failed to submit review: ' + error.message);
+            console.error("Operation failed:", error);
+            showMessage('error', error.message);
             setButtonsState(false);
           })
-          .submitReview(Number(rowIndex), decision, elements.notes.value);
+          .submitAndGetNext(Number(rowIndex), decision, elements.notes.value);
       }
 
       // Initialize

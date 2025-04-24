@@ -1,6 +1,6 @@
 from typing import List, Tuple, Optional, Any, Union, Dict
 import yaml
-from pydantic_ai.format_as_xml import format_as_xml
+from pydantic_ai import format_as_xml
 
 def format_xml(obj: Any, *, root_tag: str = "data", item_tag: str = "item", prefix: str = "") -> str:
     """Format data as XML using pydantic_ai's format_as_xml.

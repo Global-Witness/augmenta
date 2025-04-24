@@ -138,7 +138,7 @@ class BaseAgent:
             # Run the agent with the appropriate parameters
             # result = await self.agent.run(
             #     prompt_user,
-            #     result_type=response_format,
+            #     output_type=response_format,
             #     model_settings=model_settings
             #     # usage_limits=UsageLimits(request_limit=5)
             # )
@@ -146,7 +146,7 @@ class BaseAgent:
             async with self.agent.run_mcp_servers():
                 result = await self.agent.run(
                     prompt_user,
-                    result_type=response_format,
+                    output_type=response_format,
                     model_settings=model_settings
             )
 

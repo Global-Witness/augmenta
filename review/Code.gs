@@ -156,22 +156,20 @@ function getNextRowToReview() {
 }
 
 /**
- * Submits the review data for a specific row using batch operations.
+ * Submits review and gets next row in one operation for maximum performance.
  * @param {number} rowIndex Row being reviewed (1-based)
  * @param {string} decision Review decision ('True', 'False', 'Unsure')
  * @param {string} notes Reviewer notes
- * @return {object} Success status and optional message
+ * @return {object} Result containing success status and next row data
  */
-function submitReview(rowIndex, decision, notes) {
+function submitAndGetNext(rowIndex, decision, notes) {
   const userEmail = Session.getActiveUser().getEmail();
   if (!userEmail) {
-    Logger.log('Could not get user email for submission.');
-    return { success: false, message: "Could not identify the current user for submission." };
+    return { success: false, message: "Could not identify current user" };
   }
 
   if (!rowIndex || !CONFIG.VALID_DECISIONS.has(decision)) {
-    Logger.log(`Invalid submission data: rowIndex=${rowIndex}, decision=${decision}`);
-    return { success: false, message: "Invalid submission data received." };
+    return { success: false, message: "Invalid submission data" };
   }
 
   const ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
@@ -180,37 +178,41 @@ function submitReview(rowIndex, decision, notes) {
   return withLock_(() => {
     try {
       const headerIndices = getHeaderIndices_(sheet);
-      const columns = {
-        status: headerIndices[CONFIG.REVIEW_STATUS] + 1,
-        reviewer: headerIndices[CONFIG.REVIEWER_EMAIL] + 1,
-        timestamp: headerIndices[CONFIG.TIMESTAMP] + 1,
-        notes: headerIndices[CONFIG.NOTES] + 1
-      };
+      const statusCol = headerIndices[CONFIG.REVIEW_STATUS] + 1;
+      const reviewerCol = headerIndices[CONFIG.REVIEWER_EMAIL] + 1;
+      const timestampCol = headerIndices[CONFIG.TIMESTAMP] + 1;
+      const notesCol = headerIndices[CONFIG.NOTES] + 1;
 
-      // Batch read for ownership verification
-      const verifyRange = sheet.getRange(rowIndex, columns.reviewer, 1, 2);
-      const [currentReviewer, currentStatus] = verifyRange.getValues()[0];
-      
-      if (currentReviewer !== userEmail || currentStatus !== CONFIG.STATUS_IN_PROGRESS) {
-        Logger.log(`Warning: Row ${rowIndex} submission ownership mismatch. Current: ${currentReviewer}, Status: ${currentStatus}`);
-      }
-
-      // Batch update all fields
-      const range = sheet.getRange(rowIndex, columns.status, 1, 4);
-      range.setValues([[
+      // Submit current review
+      sheet.getRange(rowIndex, statusCol, 1, 4).setValues([[
         decision,
         userEmail,
         new Date(),
         notes || ""
       ]]);
 
+      // Find and assign next row
+      const nextRowIndex = findNextUnreviewedRow_(sheet, statusCol, reviewerCol);
+      if (nextRowIndex === -1) {
+        return { success: true, message: "All rows reviewed" };
+      }
+
+      // Assign next row and get its data
+      sheet.getRange(nextRowIndex, statusCol, 1, 2).setValues([[CONFIG.STATUS_IN_PROGRESS, userEmail]]);
+      const rowData = sheet.getRange(nextRowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
       SpreadsheetApp.flush();
-      Logger.log(`Review submitted for row ${rowIndex} by ${userEmail}: ${decision}`);
-      return { success: true };
+      return {
+        success: true,
+        rowIndex: nextRowIndex,
+        headers: headers,
+        rowData: rowData
+      };
 
     } catch (error) {
-      Logger.log(`Error in submitReview for row ${rowIndex}: ${error}`);
-      return { success: false, message: `An error occurred while submitting: ${error.message}` };
+      Logger.log(`Error in submitAndGetNext: ${error}`);
+      return { success: false, message: error.message };
     }
   });
 }
