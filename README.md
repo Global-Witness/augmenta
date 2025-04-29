@@ -12,7 +12,7 @@ Augmenta is an AI agent for enhancing datasets with information from the interne
 
 Large Language Models (LLMs) can be powerful tools for processing a lot of information very quickly. However, they don't do it entirely accurately. LLMs are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
 
-Augmenta aims to address this shortcoming by allowing LLMs to search and browse the internet for information. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", and has been shown to significantly improve output quality. It does not, however, eliminate the risk of hallucinations entirely, so you should always verify the results before publishing them.
+Augmenta aims to address this shortcoming by allowing LLMs to search and browse the internet for information. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", or "[grounding](https://techcommunity.microsoft.com/blog/fasttrackforazureblog/grounding-llms/3843857)", and has been shown to significantly improve output quality. It does not, however, eliminate the risk of hallucinations entirely, so you should always verify the results before publishing them.
 
 ## Installation
 

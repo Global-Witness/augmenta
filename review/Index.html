@@ -2,419 +2,145 @@
 <html>
   <head>
     <base target="_top">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Augmenta Review</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-      :root {
-        --primary: #4285F4;
-        --success: #0F9D58;
-        --danger: #DB4437;
-        --warning: #F4B400;
-        --bg-light: #f8f9fa;
-        --bg-medium: #e9ecef;
-        --text-dark: #212529;
-        --text-muted: #6c757d;
-        --border: #e2e8f0;
-        --radius: 0.5rem;
-        --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
-      }
-    
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        line-height: 1.5;
-        background: var(--bg-light);
-        color: var(--text-dark);
-        margin: 0;
-        padding: 0;
-        font-size: 15px;
+        font-family: Arial, sans-serif;
+        margin: 20px;
       }
-    
-      .container {
-        max-width: 800px;
-        margin: 2rem auto;
-        padding: 1.5rem;
-        background: #fff;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
+      #data-container {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
       }
-    
-      h1 {
-        color: var(--primary);
-        margin: 0 0 2rem;
-        text-align: center;
-        font-weight: 600;
-        font-size: 1.75rem;
-        letter-spacing: -0.02em;
+      .data-row {
+        margin: 5px 0;
       }
-    
-      #review-area {
-        margin-top: 1.5rem;
-        padding: 1.25rem;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: #fff;
-        opacity: 1;
-        transition: opacity 0.2s ease;
-        contain: content;
-      }
-    
-      table {
+      #notes {
         width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        margin-bottom: 1.5rem;
-        table-layout: fixed;
-      }
-    
-      td {
-        padding: 0.75rem 1rem;
-        text-align: left;
-        vertical-align: top;
-        word-wrap: break-word;
-        border-bottom: 1px solid var(--border);
-        line-height: 1.6;
-      }
-    
-      tr:last-child td { border-bottom: none; }
-    
-      td:first-child {
-        width: 30%;
-        font-weight: 600;
-        color: var(--text-muted);
-        font-size: 0.9375rem;
-      }
-    
-      td:last-child {
-        width: 70%;
-        background: var(--bg-light);
-        border-radius: 0.25rem;
-      }
-    
-      td a {
-        color: var(--primary);
-        text-decoration: none;
-      }
-    
-      td a:hover { text-decoration: underline; }
-    
-      label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 500;
-      }
-    
-      textarea {
-        width: 100%;
+        height: 100px;
+        margin: 10px 0;
+        padding: 8px;
         box-sizing: border-box;
-        padding: 0.75rem 1rem;
-        margin-bottom: 1.25rem;
-        border: 1.5px solid var(--border);
-        border-radius: var(--radius);
-        font-size: 0.9375rem;
-        line-height: 1.5;
-        min-height: 80px;
-        transition: border-color 0.15s ease;
-        resize: vertical;
       }
-
-      textarea:focus {
-        outline: none;
-        border-color: var(--primary);
+      .button-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
       }
-    
-      .review-controls {
-        margin-top: 1rem;
-        text-align: center;
-      }
-    
       button {
-        padding: 0.75rem 1.5rem;
-        margin: 0 0.5rem 0.75rem;
+        padding: 10px 20px;
+        font-size: 16px;
         cursor: pointer;
         border: none;
-        border-radius: var(--radius);
-        font-size: 0.9375rem;
-        font-weight: 600;
-        transition: all 0.2s ease;
-        box-shadow: var(--shadow);
-        contain: layout style;
+        border-radius: 4px;
+        flex: 1;
       }
-    
-      button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 8px -2px rgba(0,0,0,0.1);
+      .correct-btn { background: #4CAF50; color: white; }
+      .incorrect-btn { background: #f44336; color: white; }
+      .notsure-btn { background: #607D8B; color: white; }
+      .disabled { opacity: 0.6; cursor: not-allowed; }
+      #message {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
       }
-
-      button:active {
-        transform: translateY(0);
-      }
-    
-      #btn-true { background: var(--success); color: white; }
-      #btn-true:hover { background: #0d854a; }
-    
-      #btn-false { background: var(--danger); color: white; }
-      #btn-false:hover { background: #c5392d; }
-    
-      #btn-unsure { background: var(--warning); color: white; }
-      #btn-unsure:hover { background: #e2a000; }
-    
-      button:disabled {
-        background: var(--bg-medium);
-        color: var(--text-muted);
-        cursor: not-allowed;
-        box-shadow: none;
-        transform: none;
-      }
-    
-      #loading-indicator, .error, .info {
-        padding: 1rem 1.25rem;
-        margin-bottom: 1.5rem;
-        border-radius: var(--radius);
-        border: 1px solid transparent;
-        text-align: center;
-        font-weight: 500;
-        animation: fadeIn 0.2s ease;
-        contain: content;
-      }
-
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-5px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-    
-      #loading-indicator {
-        background: var(--bg-medium);
-        color: var(--text-muted);
-      }
-
-      .error {
-        background: #fef2f2;
-        border-color: #fee2e2;
-        color: #991b1b;
-      }
-
-      .info {
-        background: #f0f9ff;
-        border-color: #bae6fd;
-        color: #0369a1;
-      }
-
-      #row-index {
-        color: var(--primary);
-        font-weight: 600;
-      }
-
-      .hidden {
-        display: none !important;
-      }
+      .error { background: #ffebee; color: #c62828; }
+      .success { background: #e8f5e9; color: #2e7d32; }
     </style>
   </head>
   <body>
-    <div class="container">
-      <h1>Augmenta Review</h1>
-
-      <div id="loading-indicator">Loading next row...</div>
-      <div id="error-message" class="error hidden"></div>
-      <div id="completion-message" class="info hidden"></div>
-
-      <div id="review-area" class="hidden">
-        <p><strong>Reviewing Row: <span id="row-index"></span></strong></p>
-        <table id="row-data-table">
-          <tbody></tbody>
-        </table>
-
-        <div class="review-controls">
-          <label for="notes">Notes:</label>
-          <textarea id="notes" rows="4" placeholder="Enter any additional notes here..."></textarea>
-          <div>
-            <button id="btn-true" onclick="handleReview('True')">True</button>
-            <button id="btn-false" onclick="handleReview('False')">False</button>
-            <button id="btn-unsure" onclick="handleReview('Unsure')">Unsure</button>
-          </div>
-        </div>
-      </div>
-
-      <input type="hidden" id="current-row-index" value="">
+    <div id="data-container"></div>
+    <textarea id="notes" placeholder="Enter review notes here..."></textarea>
+    <div class="button-container">
+      <button class="correct-btn" onclick="submitReview('correct')">Correct</button>
+      <button class="incorrect-btn" onclick="submitReview('incorrect')">Incorrect</button>
+      <button class="notsure-btn" onclick="submitReview('not_sure')">Not Sure</button>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <div id="message"></div>
+    
     <script>
-      // State management
-      const state = {
-        currentRowIndex: null,
-        isSubmitting: false,
-        submitDebounceTimer: null,
-        retryCount: 0,
-        maxRetries: 3
-      };
-
-      // DOM Elements cache
-      const elements = {
-        error: document.getElementById('error-message'),
-        loading: document.getElementById('loading-indicator'),
-        completion: document.getElementById('completion-message'),
-        review: document.getElementById('review-area'),
-        rowIndex: document.getElementById('row-index'),
-        currentRowInput: document.getElementById('current-row-index'),
-        notes: document.getElementById('notes'),
-        table: document.getElementById('row-data-table').getElementsByTagName('tbody')[0],
-        buttons: {
-          true: document.getElementById('btn-true'),
-          false: document.getElementById('btn-false'),
-          unsure: document.getElementById('btn-unsure')
+      let currentRow = null;
+      
+      // Load next row on page load
+      window.onload = loadNextRow;
+      
+      function loadNextRow() {
+        disableButtons(true);
+        google.script.run
+          .withSuccessHandler(displayRow)
+          .withFailureHandler(showError)
+          .getNextRow();
+      }
+      
+      function displayRow(result) {
+        if (!result) {
+          document.getElementById('data-container').innerHTML = 'No more rows to review.';
+          document.getElementById('notes').style.display = 'none';
+          return;
         }
-      };
-
-      // Configure marked for better performance
-      const renderer = new marked.Renderer();
-      renderer.link = (href, title, text) => {
-        const link = marked.Renderer.prototype.link.call(renderer, href, title, text);
-        return link.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
-      };
-
-      marked.setOptions({
-        gfm: true,
-        breaks: true,
-        sanitize: false,
-        renderer: renderer
-      });
-
-      // Utility functions
-      function showElement(element, show = true) {
-        element.classList.toggle('hidden', !show);
-      }
-
-      function showMessage(type, text) {
-        Object.entries(elements).forEach(([key, el]) => {
-          if (key !== 'buttons' && key !== 'table') {
-            showElement(el, key === type);
-            if (key === type && text && key !== 'review') {
-              el.textContent = key === 'error' ? `Error: ${text}` : text;
-            }
-          }
-        });
-      }
-
-      function setButtonsState(disabled) {
-        Object.values(elements.buttons).forEach(btn => btn.disabled = disabled);
-        elements.notes.disabled = disabled;
-      }
-
-      // Data display function with performance optimizations
-      function displayRowData(data) {
-        if (data.error) return showMessage('error', data.error);
-        if (data.message) return showMessage('completion', data.message);
-        if (!data.rowData?.length || !data.headers?.length) {
-          console.error("Invalid data received:", data);
-          return showMessage('error', 'Invalid data from server');
-        }
-
-        state.currentRowIndex = data.rowIndex;
-        elements.currentRowInput.value = data.rowIndex;
-        elements.rowIndex.textContent = data.rowIndex;
-        elements.notes.value = '';
-
-        const reviewCols = new Set(["Review Status", "Reviewer Email", "Review Timestamp", "Review Notes"]);
-        const fragment = document.createDocumentFragment();
         
-        // Build table rows efficiently
-        data.headers.forEach((header, index) => {
-          if (header && !reviewCols.has(header)) {
-            const rawData = data.rowData[index] !== null && data.rowData[index] !== undefined
-              ? String(data.rowData[index])
-              : '';
-            
-            if (rawData.trim()) {
-              const row = document.createElement('tr');
-              const headerCell = document.createElement('td');
-              const dataCell = document.createElement('td');
-              
-              headerCell.textContent = header;
-              dataCell.innerHTML = marked.parse(rawData);
-              
-              row.appendChild(headerCell);
-              row.appendChild(dataCell);
-              fragment.appendChild(row);
-            }
+        currentRow = result.rowIndex;
+        const container = document.getElementById('data-container');
+        container.innerHTML = '';
+        
+        // Display each column except review-related ones
+        result.headers.forEach((header, index) => {
+          if (!header.startsWith('review_')) {
+            const value = result.data[index] || '';
+            container.innerHTML += `
+              <div class="data-row">
+                <strong>${header}:</strong> ${
+                  typeof value === 'string' ? marked.parse(value) : value
+                }
+              </div>
+            `;
           }
         });
-
-        // Batch DOM updates
-        requestAnimationFrame(() => {
-          elements.table.innerHTML = '';
-          elements.table.appendChild(fragment);
-          setButtonsState(false);
-          showMessage('review');
-        });
+        
+        document.getElementById('notes').value = '';
+        disableButtons(false);
       }
-
-      // Network request functions with retry logic
-      async function fetchNextRow(retry = false) {
-        if (retry) {
-          if (state.retryCount >= state.maxRetries) {
-            return showMessage('error', 'Maximum retry attempts reached. Please refresh the page.');
-          }
-          state.retryCount++;
-        } else {
-          state.retryCount = 0;
-        }
-
-        showMessage('loading', 'Fetching next row...');
-        setButtonsState(true);
-
+      
+      function submitReview(decision) {
+        if (!currentRow) return;
+        
+        const notes = document.getElementById('notes').value;
+        disableButtons(true);
+        
         google.script.run
-          .withSuccessHandler(displayRowData)
-          .withFailureHandler(error => {
-            console.error("Fetch Failure:", error);
-            setTimeout(() => fetchNextRow(true), 1000 * state.retryCount);
+          .withSuccessHandler(() => {
+            showMessage('Review submitted successfully!', true);
+            loadNextRow();
           })
-          .getNextRowToReview();
+          .withFailureHandler(showError)
+          .submitReview(currentRow, decision, notes);
       }
-
-      // Debounced review submission
-      function handleReview(decision) {
-        if (state.isSubmitting) return;
-        submitAndGetNext(decision);
-      }
-
-      function submitAndGetNext(decision) {
-        if (state.isSubmitting) return;
-        state.isSubmitting = true;
-
-        const rowIndex = elements.currentRowInput.value;
-        if (!rowIndex) {
-          state.isSubmitting = false;
-          return showMessage('error', 'Row index missing');
+      
+      function disableButtons(disabled) {
+        const buttons = document.getElementsByTagName('button');
+        for (let button of buttons) {
+          button.disabled = disabled;
+          button.classList.toggle('disabled', disabled);
         }
-
-        showMessage('loading', 'Processing...');
-        setButtonsState(true);
-
-        google.script.run
-          .withSuccessHandler(response => {
-            state.isSubmitting = false;
-            if (response?.success) {
-              if (response.message) {
-                showMessage('completion', response.message);
-              } else {
-                displayRowData(response);
-              }
-            } else {
-              showMessage('error', response?.message || 'Operation failed');
-              setButtonsState(false);
-            }
-          })
-          .withFailureHandler(error => {
-            state.isSubmitting = false;
-            console.error("Operation failed:", error);
-            showMessage('error', error.message);
-            setButtonsState(false);
-          })
-          .submitAndGetNext(Number(rowIndex), decision, elements.notes.value);
       }
-
-      // Initialize
-      document.addEventListener('DOMContentLoaded', fetchNextRow);
+      
+      function showMessage(text, isSuccess) {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.style.display = 'block';
+        msg.className = isSuccess ? 'success' : 'error';
+        if (isSuccess) {
+          setTimeout(() => msg.style.display = 'none', 3000);
+        }
+      }
+      
+      function showError(error) {
+        showMessage(error.message || 'An error occurred', false);
+        disableButtons(false);
+      }
     </script>
   </body>
 </html>
