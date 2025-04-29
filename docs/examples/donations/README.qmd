@@ -195,4 +195,5 @@ We can work around these limitations in a few ways:
 
 For organisations, which tend to be easier to identify, the model does a much better job.
 
-If we were to publish any analysis of this data, we would need to fact-check the results.
+If we were to publish any analysis of this data, [we would need to
+fact-check the results](/review/).

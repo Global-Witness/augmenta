@@ -81,3 +81,14 @@ structure:
 ```
 
 Adapt the text for your specific use case.
+
+You may also add a "[sequential thinking](https://github.com/modelcontextprotocol/servers/tree/main/src/sequentialthinking)" [MCP tool](/docs/tools.md) to your project by adding the following to your YAML configuration:
+
+```yaml
+mcpServers:
+  - name: sequential-thinking
+    command: npx
+    args:
+      - "-y"
+      - "@modelcontextprotocol/server-sequential-thinking"
+```
