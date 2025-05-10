@@ -1,11 +1,37 @@
-# Fixed agent
+# Augmenta Agent
 
-By default, Augmenta runs in an "autonomous" mode, where it will autonomatically make decisions about what to search for, which resuults to read, and when it has enough information to make a decision.
+Augmenta uses a unified agent architecture that handles web research through a streamlined interface.
 
-You may want to switch to a "pre-determined" mode, where you can specify the search terms and the number of results to scrape. This is useful if you want to have more control over the search process, or if you want to use Augmenta in a more deterministic way.
+The `AugmentaAgent` class provides built-in capabilities for web search, content extraction, and LLM-based analysis.
 
-To start, add this to your `config.yml`:
+## Features
+
+- Web search using various search providers
+- Content extraction from web pages
+- Integration with Model Context Protocol (MCP) servers
+- Structured output formatting via Pydantic models
+- Customizable system prompts and model parameters
+
+## Usage
+
+The agent is automatically configured when you run Augmenta with your configuration:
 
 ```yaml
-agent: fixed
+# Basic configuration example
+model: "openai/gpt-4o"
+temperature: 0.2
+max_tokens: 2048
+rate_limit: 10  # Optional: Requests per minute
 ```
+
+## Advanced Configuration
+
+You can customize the agent's behavior through your configuration file:
+
+```yaml
+prompt:
+  system: "You are a research assistant specialized in analyzing company donations data. Your task is to categorize each donation and provide reasoning."
+  user: "Analyze this donation: {{amount}} from {{donor}} to {{recipient}}. Provide category and reasoning."
+```
+
+The agent integrates seamlessly with Augmenta's search and extraction tools to provide comprehensive research capabilities.

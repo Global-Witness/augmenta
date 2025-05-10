@@ -8,9 +8,7 @@ from typing import Optional, Tuple, Dict, Any, Callable, Type, Union
 from dataclasses import dataclass
 
 from augmenta.utils.prompt_formatter import format_examples
-from augmenta.agents.base_agent import BaseAgent
-from augmenta.agents.autonomous_agent import AutonomousAgent
-from augmenta.agents.fixed_agent import FixedAgent
+from augmenta.agent import AugmentaAgent
 from augmenta.cache import CacheManager
 from augmenta.cache.process import handle_process_resumption, setup_caching, apply_cached_results
 from augmenta.config.read_config import load_config, get_config_values
@@ -45,6 +43,7 @@ async def process_augmenta(
     
     # Initialize agent once for all processing
     config_values = get_config_values(config_data)
+    
     agent_settings = {
         "model": config_values["model_id"],
         "temperature": config_values["temperature"],
@@ -53,12 +52,11 @@ async def process_augmenta(
         "system_prompt": config_data["prompt"]["system"]
     }
     
-    agent_mode = config_data.get("agent", "autonomous")
-    agent = (AutonomousAgent(**agent_settings) if agent_mode == "autonomous"
-            else FixedAgent(**agent_settings))
+    # Create agent instance
+    agent = AugmentaAgent(**agent_settings)
             
     # Create structure class once
-    response_format = BaseAgent.create_structure_class(config_data["config_path"])
+    response_format = AugmentaAgent.create_structure_class(config_data["config_path"])
     
     # Load and validate input data
     df = pd.read_csv(config_data["input_csv"])
@@ -139,7 +137,7 @@ async def process_augmenta(
 async def process_row(
     row_data: Dict[str, Any],
     config: Dict[str, Any],
-    agent: BaseAgent,
+    agent: AugmentaAgent,
     response_format: Type,
     cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
@@ -161,11 +159,8 @@ async def process_row(
             if examples_text := format_examples(examples_yaml):
                 prompt_user = f'{prompt_user}\n\n{examples_text}'
         
-        # Run prompt using the provided agent
-        if isinstance(agent, FixedAgent):
-            response = await agent.run(prompt_user, query=query, response_format=response_format)
-        else:
-            response = await agent.run(prompt_user, response_format=response_format)
+        # Run prompt using the agent
+        response = await agent.run(prompt_user, response_format=response_format)
         
         # Handle caching if enabled
         if cache_manager and process_id:

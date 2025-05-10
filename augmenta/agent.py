@@ -1,17 +1,19 @@
+"""Unified agent module for Augmenta."""
+
 from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal, List
 from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import Agent
-# from pydantic_ai.usage import UsageLimits
-# from pydantic_ai.mcp import MCPServerStdio
 import logfire
-from ..tools.mcp import load_mcp_servers
+from .tools.mcp import load_mcp_servers
+from .tools.search_web import search_web
+from .tools.visit_webpages import visit_webpages
 
 Agent.instrument_all()
 
-class BaseAgent:
-    """Base class providing core LLM functionality"""
+class AugmentaAgent:
+    """Agent that provides LLM functionality with web research capabilities."""
     
     TYPE_MAPPING: ClassVar[Dict[str, type]] = {
         'str': str, 'bool': bool, 'int': int,
@@ -25,10 +27,9 @@ class BaseAgent:
         rate_limit: Optional[float] = None,
         max_tokens: Optional[int] = None,
         verbose: bool = False,
-        tools: Optional[list] = None,
-        mcp_servers: Optional[list] = None
+        system_prompt: str = "You are a web research assistant. Use the provided tools to search for information and analyse web pages."
     ):
-        """Initialize the base agent.
+        """Initialize the agent.
         
         Args:
             model: The LLM model identifier
@@ -36,8 +37,7 @@ class BaseAgent:
             rate_limit: Optional rate limit between requests
             max_tokens: Optional maximum tokens for response
             verbose: Whether to enable verbose logging with logfire
-            tools: Optional list of tool functions to register
-            mcp_servers: Optional list of pre-configured MCP servers (overrides config)
+            system_prompt: Default system prompt for the agent
         """
         # Create model settings with all available parameters
         model_settings = {'temperature': temperature}
@@ -46,18 +46,17 @@ class BaseAgent:
         if max_tokens is not None:
             model_settings['max_tokens'] = max_tokens
             
-        # Load MCP servers from config if not provided explicitly
-        if mcp_servers is None:
-            try:
-                mcp_servers = load_mcp_servers()
-            except RuntimeError:
-                # Config not loaded yet, proceed without MCP servers
-                mcp_servers = []
+        # Load MCP servers from config
+        try:
+            mcp_servers = load_mcp_servers()
+        except RuntimeError:
+            # Config not loaded yet, proceed without MCP servers
+            mcp_servers = []
             
         self.agent = Agent(
             model,
             model_settings=model_settings,
-            tools=tools or [],
+            tools=[search_web, visit_webpages],
             mcp_servers=mcp_servers
         )
         self.model = model
@@ -65,6 +64,7 @@ class BaseAgent:
         self.rate_limit = rate_limit
         self.max_tokens = max_tokens
         self.verbose = verbose
+        self.system_prompt = system_prompt
 
     @staticmethod
     def create_structure_class(yaml_file_path: Union[str, Path]) -> Type[BaseModel]:
@@ -92,7 +92,7 @@ class BaseAgent:
                 
                 field_type = (Literal[tuple(str(opt) for opt in field_info['options'])] 
                            if 'options' in field_info 
-                           else BaseAgent.TYPE_MAPPING.get(field_info.get('type', 'str'), str))
+                           else AugmentaAgent.TYPE_MAPPING.get(field_info.get('type', 'str'), str))
                 
                 fields[field_name] = (
                     field_type,
@@ -135,23 +135,31 @@ class BaseAgent:
             # Set the system prompt
             self.agent.system_prompt = prompt_system
             
-            # Run the agent with the appropriate parameters
-            # result = await self.agent.run(
-            #     prompt_user,
-            #     output_type=response_format,
-            #     model_settings=model_settings
-            #     # usage_limits=UsageLimits(request_limit=5)
-            # )
-
             async with self.agent.run_mcp_servers():
                 result = await self.agent.run(
                     prompt_user,
                     output_type=response_format,
                     model_settings=model_settings
-            )
+                )
 
             # Return the appropriate result format
             return result.data.model_dump() if response_format else result.data
         except Exception as e:
             logfire.error(f"LLM request failed: {e}")
             raise RuntimeError(f"LLM request failed: {e}")
+            
+    async def run(self, prompt: str, response_format: Optional[Type[BaseModel]] = None) -> Union[str, dict[str, Any], BaseModel]:
+        """Run the agent to perform web research.
+        
+        Args:
+            prompt: The research query or task
+            response_format: Optional Pydantic model for structured output
+            
+        Returns:
+            The agent's response after researching, either as string, dict or Pydantic model
+        """
+        return await self.complete(
+            prompt_system=self.system_prompt,
+            prompt_user=prompt,
+            response_format=response_format
+        )
