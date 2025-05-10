@@ -78,7 +78,6 @@ output_csv: path/to/processed_data.csv
 model:
   provider: openai
   name: gpt-4o-mini
-query_col: DonorName
 search:
   engine: brightdata_google
 prompt:
@@ -161,7 +160,6 @@ You will need to edit this file to suit your project. Let's break all this down:
 
 - `input_csv` and `output_csv` are the names of the data you want to process and where you want to save the results, respectively.
 - `model`: The LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both a `provider` and model `name` (ie. `anthropic` and `claude-3.5-sonnet`). You will also likely need to set up an API key (see [credentials below](#credentials)).
-- `query_col`: The name of the column in your input CSV that you want to use as the main search term (eg. company name).
 - `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md). You will also likely need to set up an API key here (see [credentials](#credentials)).
 - `prompt`: LLMs take in a [system prompt](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts) and a user prompt. Think of the system prompt as explaining to the LLM what its role is, and the user prompt as the instructions you want it to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
 - `structure`: The structure of the output data. You can think of this as the columns you want added to your original CSV.

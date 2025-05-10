@@ -39,12 +39,16 @@ class AugmentaAgent:
             verbose: Whether to enable verbose logging with logfire
             system_prompt: Default system prompt for the agent
         """
-        # Create model settings with all available parameters
-        model_settings = {'temperature': temperature}
-        if rate_limit is not None:
-            model_settings['rate_limit'] = rate_limit
-        if max_tokens is not None:
-            model_settings['max_tokens'] = max_tokens
+        # Store parameters for reuse
+        self.model = model
+        self.temperature = temperature
+        self.rate_limit = rate_limit
+        self.max_tokens = max_tokens
+        self.verbose = verbose
+        self.system_prompt = system_prompt
+        
+        # Create model settings
+        model_settings = self._create_model_settings(temperature)
             
         # Load MCP servers from config
         try:
@@ -59,13 +63,23 @@ class AugmentaAgent:
             tools=[search_web, visit_webpages],
             mcp_servers=mcp_servers
         )
-        self.model = model
-        self.temperature = temperature
-        self.rate_limit = rate_limit
-        self.max_tokens = max_tokens
-        self.verbose = verbose
-        self.system_prompt = system_prompt
 
+    def _create_model_settings(self, temperature: float) -> Dict[str, Any]:
+        """Create model settings dictionary with proper parameters.
+        
+        Args:
+            temperature: Temperature setting for the model
+            
+        Returns:
+            Dictionary with model settings
+        """
+        model_settings = {'temperature': temperature}
+        if self.rate_limit is not None:
+            model_settings['rate_limit'] = self.rate_limit
+        if self.max_tokens is not None:
+            model_settings['max_tokens'] = self.max_tokens
+        return model_settings
+    
     @staticmethod
     def create_structure_class(yaml_file_path: Union[str, Path]) -> Type[BaseModel]:
         """Creates a Pydantic model from YAML structure definition.
@@ -77,7 +91,6 @@ class AugmentaAgent:
             A Pydantic model class based on the YAML structure
         """
         yaml_file_path = Path(yaml_file_path)
-        
         try:
             with open(yaml_file_path, 'r', encoding='utf-8') as f:
                 yaml_content = yaml.safe_load(f)
@@ -90,9 +103,12 @@ class AugmentaAgent:
                 if not isinstance(field_info, dict):
                     raise ValueError(f"Invalid field definition for {field_name}")
                 
-                field_type = (Literal[tuple(str(opt) for opt in field_info['options'])] 
-                           if 'options' in field_info 
-                           else AugmentaAgent.TYPE_MAPPING.get(field_info.get('type', 'str'), str))
+                # Determine field type based on options or type specification
+                if 'options' in field_info:
+                    field_type = Literal[tuple(str(opt) for opt in field_info['options'])]
+                else:
+                    type_str = field_info.get('type', 'str')
+                    field_type = AugmentaAgent.TYPE_MAPPING.get(type_str, str)
                 
                 fields[field_name] = (
                     field_type,
@@ -101,8 +117,9 @@ class AugmentaAgent:
             
             return create_model('Structure', **fields, __base__=BaseModel)
                 
-        except (yaml.YAMLError, OSError) as e:            raise ValueError(f"Failed to parse YAML: {e}")
-            
+        except (yaml.YAMLError, OSError) as e:
+            raise ValueError(f"Failed to parse YAML: {e}")
+    
     async def run(
         self,
         prompt: str,
@@ -122,17 +139,13 @@ class AugmentaAgent:
             The agent's response after researching, either as string, dict or Pydantic model
         """
         try:
-            # Create model_settings for this specific request if temperature is provided
-            model_settings = None
-            if temperature is not None:
-                model_settings = {'temperature': temperature}
-                if self.rate_limit is not None:
-                    model_settings['rate_limit'] = self.rate_limit
-                if self.max_tokens is not None:
-                    model_settings['max_tokens'] = self.max_tokens
-                
             # Set the system prompt
             self.agent.system_prompt = system_prompt or self.system_prompt
+            
+            # Prepare model settings only if temperature override is provided
+            model_settings = None
+            if temperature is not None and temperature != self.temperature:
+                model_settings = self._create_model_settings(temperature)
             
             async with self.agent.run_mcp_servers():
                 result = await self.agent.run(

@@ -96,3 +96,18 @@ def format_examples(examples_yaml: Union[str, list]) -> str:
             raise ValueError("Each example must contain 'input' and 'output' fields")
     
     return format_xml(data, prefix="## Examples")
+
+def format_prompt(prompt_template: str, row_data: Dict[str, Any]) -> str:
+    """Format a prompt template by replacing placeholders with row data.
+    
+    Args:
+        prompt_template: Prompt template with {{placeholder}} syntax
+        row_data: Dictionary containing values to replace placeholders
+        
+    Returns:
+        Formatted prompt string
+    """
+    formatted = prompt_template
+    for column, value in row_data.items():
+        formatted = formatted.replace(f"{{{{{column}}}}}", str(value))
+    return formatted

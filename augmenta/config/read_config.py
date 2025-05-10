@@ -15,38 +15,92 @@ REQUIRED_CONFIG_FIELDS: Set[str] = {
 }
 
 def validate_config(config: Dict[str, Any]) -> None:
-    """Validate configuration data structure and required fields."""
+    """Validate configuration data structure and required fields.
+    
+    Args:
+        config: Configuration dictionary to validate
+        
+    Raises:
+        ValueError: If configuration is invalid or missing required fields
+    """
+    # Check for required top-level fields
     missing_fields = REQUIRED_CONFIG_FIELDS - set(config.keys())
     if missing_fields:
-        raise ValueError(f"Missing required config fields: {missing_fields}")
+        raise ValueError(f"Missing required config fields: {', '.join(missing_fields)}")
     
+    # Validate search configuration
     if not isinstance(config.get("search"), dict):
-        raise ValueError("'search' must be a dictionary")
+        raise ValueError("'search' must be a dictionary with 'engine' and 'results' fields")
+    
+    search_config = config.get("search", {})
+    if "engine" not in search_config:
+        raise ValueError("'search' configuration must include 'engine' field")
+    
+    # Validate prompt configuration  
     if not isinstance(config.get("prompt"), dict):
-        raise ValueError("'prompt' must be a dictionary")
+        raise ValueError("'prompt' must be a dictionary with 'system' and 'user' fields")
         
-    # Validate MCP servers if present
+    prompt_config = config.get("prompt", {})
+    if "system" not in prompt_config or "user" not in prompt_config:
+        raise ValueError("'prompt' configuration must include 'system' and 'user' fields")
+        
+    # Validate model configuration
+    model_config = config.get("model", {})
+    if not isinstance(model_config, dict):
+        raise ValueError("'model' must be a dictionary")
+    
+    if "provider" not in model_config or "name" not in model_config:
+        raise ValueError("'model' configuration must include 'provider' and 'name' fields")
+            
+    # Validate MCP servers configuration if present
     if "mcpServers" in config:
         if not isinstance(config["mcpServers"], list):
-            raise ValueError("'mcpServers' must be a list")
+            raise ValueError("'mcpServers' must be a list of server configurations")
             
-        for server in config["mcpServers"]:
+        for idx, server in enumerate(config["mcpServers"]):
             if not isinstance(server, dict):
-                raise ValueError("Each MCP server must be a dictionary")
+                raise ValueError(f"MCP server #{idx+1} must be a dictionary")
+            
             if not all(k in server for k in ("name", "command", "args")):
-                raise ValueError("Each MCP server must have 'name', 'command' and 'args' fields")
-            if not isinstance(server["args"], list):
-                raise ValueError("MCP server 'args' must be a list")
+                raise ValueError(f"MCP server #{idx+1} must have 'name', 'command' and 'args' fields")
+                
+            if not isinstance(server.get("args"), list):
+                raise ValueError(f"MCP server #{idx+1} 'args' must be a list")
 
 def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract commonly used config values."""
+    """Extract commonly used config values with proper defaults.
+    
+    Args:
+        config: Configuration dictionary
+        
+    Returns:
+        Dictionary with extracted and normalized config values
+        
+    Raises:
+        KeyError: If required keys are missing
+    """
+    # Ensure required nested structures exist
+    if "model" not in config:
+        raise KeyError("Configuration missing 'model' section")
+    
+    model_config = config["model"]
+    search_config = config.get("search", {})
+    
+    # Check for required model fields
+    if "provider" not in model_config or "name" not in model_config:
+        raise KeyError("Model configuration must include 'provider' and 'name'")
+        
+    # Construct model ID with provider
+    model_id = f"{model_config['provider']}:{model_config['name']}"
+    
+    # Extract commonly used values with defaults
     return {
-        "model_id": f"{config['model']['provider']}:{config['model']['name']}",
-        "temperature": config.get("model", {}).get("temperature", 0.0),
-        "max_tokens": config.get("model", {}).get("max_tokens"),
-        "rate_limit": config.get("model", {}).get("rate_limit"),
-        "search_engine": config["search"]["engine"],
-        "search_results": config["search"]["results"]
+        "model_id": model_id,
+        "temperature": model_config.get("temperature", 0.0),
+        "max_tokens": model_config.get("max_tokens"),
+        "rate_limit": model_config.get("rate_limit"),
+        "search_engine": search_config.get("engine"),
+        "search_results": search_config.get("results", 3)
     }
 
 def load_config(config_path: Union[str, Path]) -> Dict[str, Any]:
@@ -57,21 +111,33 @@ def load_config(config_path: Union[str, Path]) -> Dict[str, Any]:
         
     Returns:
         Validated configuration dictionary
+        
+    Raises:
+        FileNotFoundError: If the config file doesn't exist
+        ValueError: If the config has validation errors
+        yaml.YAMLError: If the YAML is malformed
     """
     global _config_data
     
-    if not _config_data:
-        config_path = Path(config_path)
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found: {config_path}")
-        
-        with open(config_path, 'r', encoding='utf-8') as f:
-            _config_data = yaml.safe_load(f)
-            _config_data["config_path"] = str(config_path)
-            
-        validate_config(_config_data)
+    config_path = Path(config_path)
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
     
-    return _config_data
+    # Always reload the configuration when explicitly requested
+    with open(config_path, 'r', encoding='utf-8') as f:
+        config = yaml.safe_load(f)
+        if not config:
+            raise ValueError(f"Empty or invalid configuration file: {config_path}")
+            
+        config["config_path"] = str(config_path.resolve())
+        
+    # Validate the configuration
+    validate_config(config)
+    
+    # Store for later global access
+    _config_data = config
+    
+    return config
 
 def get_config() -> Dict[str, Any]:
     """Get the current configuration.
