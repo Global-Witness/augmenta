@@ -57,11 +57,8 @@ async def process_augmenta(
             
     # Create structure class once
     response_format = AugmentaAgent.create_structure_class(config_data["config_path"])
-    
-    # Load and validate input data
+      # Load and validate input data
     df = pd.read_csv(config_data["input_csv"])
-    if config_data["query_col"] not in df.columns:
-        raise AugmentaError(f"Query column '{config_data['query_col']}' not found in CSV")
 
     # Handle caching setup
     process_id = handle_process_resumption(
@@ -89,15 +86,13 @@ async def process_augmenta(
         {'index': index, 'data': row}
         for index, row in df.iterrows()
         if not cache_enabled or index not in cached_results
-    ]
-
-    # Setup progress tracking
+    ]    # Setup progress tracking
     processed = 0
-    def update_progress(query: str) -> None:
+    def update_progress(row_index: str) -> None:
         nonlocal processed
         processed += 1
         if progress_callback:
-            progress_callback(processed, len(rows_to_process), query)
+            progress_callback(processed, len(rows_to_process), row_index)
 
     # Process rows concurrently with rate limiting
     workers = config_data.get("workers", 10)
@@ -138,16 +133,15 @@ async def process_row(
     row_data: Dict[str, Any],
     config: Dict[str, Any],
     agent: AugmentaAgent,
-    response_format: Type,
-    cache_manager: Optional[CacheManager] = None,
+    response_format: Type,    cache_manager: Optional[CacheManager] = None,
     process_id: Optional[str] = None,
     progress_callback: Optional[Callable[[str], None]] = None,
 ) -> ProcessingResult:
     """Process a single data row asynchronously."""
+    
     try:
         index = row_data['index']
         row = row_data['data']
-        query = row[config['query_col']]
         
         # Format prompt with row data
         prompt_user = config["prompt"]["user"]
@@ -167,13 +161,13 @@ async def process_row(
             cache_manager.cache_result(
                 process_id=process_id,
                 row_index=index,
-                query=query,
+                query=str(index),  # Use row index as query identifier
                 result=json.dumps(response)
             )
         
         # Update progress if callback provided
         if progress_callback:
-            progress_callback(query)
+            progress_callback(str(index))  # Use row index for progress tracking
             
         return ProcessingResult(index=index, data=response)
         

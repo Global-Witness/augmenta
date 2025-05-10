@@ -35,10 +35,9 @@ class ConsolePrinter:
         
         print(f"{Fore.CYAN}{Style.BRIGHT}{banner}{Style.RESET_ALL}")
     
-    def update_progress(self, current: int, total: int, query: str):
-        self.current_file = query
+    def update_progress(self, current: int, total: int, row_index: str):
         # Move cursor up one line and clear the line
-        print(f"\033[A\033[K{Fore.CYAN}Processing: {Style.BRIGHT}{query}{Style.RESET_ALL}")
+        print(f"\033[A\033[K{Fore.CYAN}Processing: {Style.BRIGHT}Row {row_index} of {total}{Style.RESET_ALL}")
 
 def get_api_keys(config_data: Dict[str, Any], interactive: bool = False) -> Dict[str, str]:
     """Get required API keys from environment or user input."""

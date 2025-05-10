@@ -9,7 +9,6 @@ _config_data: Dict[str, Any] = {}
 
 REQUIRED_CONFIG_FIELDS: Set[str] = {
     "input_csv",
-    "query_col",
     "prompt",
     "model",
     "search"

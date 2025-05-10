@@ -101,26 +101,25 @@ class AugmentaAgent:
             
             return create_model('Structure', **fields, __base__=BaseModel)
                 
-        except (yaml.YAMLError, OSError) as e:
-            raise ValueError(f"Failed to parse YAML: {e}")
+        except (yaml.YAMLError, OSError) as e:            raise ValueError(f"Failed to parse YAML: {e}")
             
-    async def complete(
+    async def run(
         self,
-        prompt_system: str,
-        prompt_user: str,
+        prompt: str,
         response_format: Optional[Type[BaseModel]] = None,
-        temperature: Optional[float] = None  # Allow overriding temperature per request
+        temperature: Optional[float] = None,
+        system_prompt: Optional[str] = None
     ) -> Union[str, dict[str, Any], BaseModel]:
-        """Generates structured or unstructured completion.
+        """Run the agent to perform web research.
         
         Args:
-            prompt_system: System prompt for the LLM
-            prompt_user: User prompt/query
+            prompt: The research query or task
             response_format: Optional Pydantic model for structured output
             temperature: Optional override for model temperature
+            system_prompt: Optional override for system prompt (defaults to self.system_prompt)
             
         Returns:
-            Either a string, dict, or Pydantic model depending on response_format
+            The agent's response after researching, either as string, dict or Pydantic model
         """
         try:
             # Create model_settings for this specific request if temperature is provided
@@ -133,11 +132,11 @@ class AugmentaAgent:
                     model_settings['max_tokens'] = self.max_tokens
                 
             # Set the system prompt
-            self.agent.system_prompt = prompt_system
+            self.agent.system_prompt = system_prompt or self.system_prompt
             
             async with self.agent.run_mcp_servers():
                 result = await self.agent.run(
-                    prompt_user,
+                    prompt,
                     output_type=response_format,
                     model_settings=model_settings
                 )
@@ -147,19 +146,3 @@ class AugmentaAgent:
         except Exception as e:
             logfire.error(f"LLM request failed: {e}")
             raise RuntimeError(f"LLM request failed: {e}")
-            
-    async def run(self, prompt: str, response_format: Optional[Type[BaseModel]] = None) -> Union[str, dict[str, Any], BaseModel]:
-        """Run the agent to perform web research.
-        
-        Args:
-            prompt: The research query or task
-            response_format: Optional Pydantic model for structured output
-            
-        Returns:
-            The agent's response after researching, either as string, dict or Pydantic model
-        """
-        return await self.complete(
-            prompt_system=self.system_prompt,
-            prompt_user=prompt,
-            response_format=response_format
-        )
