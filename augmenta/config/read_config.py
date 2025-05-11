@@ -92,15 +92,15 @@ def get_config_values(config: Dict[str, Any]) -> Dict[str, Any]:
         
     # Construct model ID with provider
     model_id = f"{model_config['provider']}:{model_config['name']}"
-    
-    # Extract commonly used values with defaults
+      # Extract commonly used values with defaults
     return {
         "model_id": model_id,
         "temperature": model_config.get("temperature", 0.0),
         "max_tokens": model_config.get("max_tokens"),
         "rate_limit": model_config.get("rate_limit"),
         "search_engine": search_config.get("engine"),
-        "search_results": search_config.get("results", 3)
+        "search_results": search_config.get("results", 3),
+        "file_col": config.get("file_col")
     }
 
 def load_config(config_path: Union[str, Path]) -> Dict[str, Any]:

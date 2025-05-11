@@ -4,7 +4,7 @@ import json
 import asyncio
 import pandas as pd
 from pathlib import Path
-from typing import Optional, Tuple, Dict, Any, Callable, Type, Union
+from typing import Optional, Tuple, Dict, Any, Callable, Type, Union, List
 from dataclasses import dataclass
 
 from augmenta.utils.prompt_formatter import format_examples, substitute_template_variables, build_complete_prompt
@@ -12,6 +12,7 @@ from augmenta.agent import AugmentaAgent
 from augmenta.cache import CacheManager
 from augmenta.cache.process import setup_cache_handling, apply_cached_results
 from augmenta.config.read_config import load_config, get_config_values
+from augmenta.tools.file import load_file
 import logfire
 
 @dataclass
@@ -206,12 +207,34 @@ async def process_row(
     """
     try:
         index = row_data['index']
-        row = row_data['data']
-          # Build complete prompt with data from row
+        row = row_data['data']        # Build complete prompt with data from row
         prompt_user = build_complete_prompt(config, row)
+          # Get the file column name from config (if available)
+        file_col = config.get("file_col")
         
-        # Run prompt using the agent
-        response = await agent.run(prompt_user, response_format=response_format)
+        # Check if a file column is specified and the row contains a file path
+        file_path = None
+        if file_col and file_col in row:
+            file_path = row.get(file_col)
+            logfire.debug(f"Using file from column '{file_col}': {file_path}")
+        elif file_col:
+            logfire.debug(f"File column '{file_col}' specified in config but not found in row data")
+        else:
+            logfire.debug("No file column specified in config")
+            
+        try:
+            binary_content = load_file(file_path) if file_path is not None else None
+            if binary_content:
+                # If file exists, create a message list with prompt and binary content
+                message_contents = [prompt_user, binary_content]
+                response = await agent.run(message_contents, response_format=response_format)
+            else:
+                # If file doesn't exist or couldn't be loaded, just use the text prompt
+                response = await agent.run(prompt_user, response_format=response_format)
+        except Exception as e:
+            logfire.warning(f"Error loading file at row {index}: {str(e)}. Proceeding with text prompt only.")
+            # Fallback to text-only prompt if file handling fails
+            response = await agent.run(prompt_user, response_format=response_format)
         
         # Handle caching and progress tracking
         handle_result_tracking(

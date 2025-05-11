@@ -4,7 +4,7 @@ from typing import Type, Optional, Union, Any, Dict, ClassVar, Literal, List
 from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, create_model
-from pydantic_ai import Agent
+from pydantic_ai import Agent, BinaryContent
 import logfire
 from .tools.mcp import load_mcp_servers
 from .tools.search_web import search_web
@@ -119,10 +119,10 @@ class AugmentaAgent:
                 
         except (yaml.YAMLError, OSError) as e:
             raise ValueError(f"Failed to parse YAML: {e}")
-    
+      
     async def run(
         self,
-        prompt: str,
+        prompt: Union[str, List[Union[str, BinaryContent]]],
         response_format: Optional[Type[BaseModel]] = None,
         temperature: Optional[float] = None,
         system_prompt: Optional[str] = None
@@ -130,7 +130,7 @@ class AugmentaAgent:
         """Run the agent to perform web research.
         
         Args:
-            prompt: The research query or task
+            prompt: The research query/task as a string or a list containing text and binary content
             response_format: Optional Pydantic model for structured output
             temperature: Optional override for model temperature
             system_prompt: Optional override for system prompt (defaults to self.system_prompt)
