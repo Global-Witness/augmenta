@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from augmenta.utils.prompt_formatter import format_examples, format_prompt
 from augmenta.agent import AugmentaAgent
 from augmenta.cache import CacheManager
-from augmenta.cache.process import handle_process_resumption, setup_caching, apply_cached_results
+from augmenta.cache.process import setup_cache_handling, apply_cached_results
 from augmenta.config.read_config import load_config, get_config_values
 import logfire
 
@@ -73,52 +73,6 @@ def load_input_data(config_data: Dict[str, Any]) -> pd.DataFrame:
         raise ValueError(f"Failed to read input CSV file '{input_csv}': {str(e)}")
 
 
-def setup_cache_handling(
-    config_data: Dict[str, Any],
-    config_path: Path,
-    cache_enabled: bool,
-    process_id: Optional[str],
-    auto_resume: bool,
-    df: pd.DataFrame
-) -> Tuple[Optional[str], Optional[CacheManager], Dict[int, Any]]:
-    """Set up caching configuration.
-    
-    Args:
-        config_data: Configuration dictionary
-        config_path: Path to configuration file
-        cache_enabled: Whether caching is enabled
-        process_id: Optional process ID for resuming
-        auto_resume: Whether to auto-resume previous processes
-        df: Loaded DataFrame
-        
-    Returns:
-        Tuple of (process ID, cache manager, cached results)
-    """
-    if not cache_enabled:
-        return None, None, {}
-        
-    # Handle process resumption
-    process_id = handle_process_resumption(
-        config_data=config_data,
-        config_path=config_path,
-        csv_path=config_data["input_csv"],
-        no_cache=not cache_enabled,
-        resume=process_id,
-        no_auto_resume=not auto_resume
-    )
-
-    # Set up caching
-    cache_manager, process_id, cached_results = setup_caching(
-        config_data=config_data,
-        csv_path=config_data["input_csv"],
-        cache_enabled=cache_enabled,
-        df_length=len(df),
-        process_id=process_id
-    )
-    
-    return process_id, cache_manager, cached_results
-
-
 async def process_augmenta(
     config_path: Union[str, Path],
     cache_enabled: bool = True,
@@ -152,8 +106,7 @@ async def process_augmenta(
     
     # Set up agent
     agent = setup_agent(config_data)
-    
-    # Load input data
+      # Load input data
     df = load_input_data(config_data)
 
     # Handle caching setup

@@ -33,7 +33,7 @@ class CacheManager:
                     cls._instance = super().__new__(cls)
         return cls._instance
     
-    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, cache_dir: Optional[Path] = None, auto_cleanup_days: int = 30) -> None:
         with self._lock:
             if hasattr(self, 'initialized'):
                 return
@@ -41,12 +41,14 @@ class CacheManager:
             self.cache_dir = cache_dir or Path(os.getcwd()) / '.augmenta' / 'cache'
             self.cache_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = self.cache_dir / 'cache.db'
+            self.auto_cleanup_days = auto_cleanup_days
             
             self.write_queue = Queue()
             self.is_running = True
             
             self.db = DatabaseConnection(self.db_path)
             self._start_writer_thread()
+            self._cleanup_old_processes()  # Auto-cleanup on startup
             atexit.register(self.cleanup)
             self.initialized = True
     
@@ -180,6 +182,17 @@ class CacheManager:
             "UPDATE processes SET status = 'completed', last_updated = ? WHERE process_id = ?",
             (datetime.now(), process_id)
         ))
+    
+    def _cleanup_old_processes(self) -> None:
+        """Clean up processes older than the specified days."""
+        try:
+            cutoff = datetime.now() - timedelta(days=self.auto_cleanup_days)
+            with self.db.get_connection() as conn:
+                result = conn.execute("DELETE FROM processes WHERE last_updated < ?", (cutoff,))
+                if result.rowcount > 0:
+                    logger.info(f"Cleaned up {result.rowcount} old processes from cache")
+        except Exception as e:
+            logger.error(f"Error during automatic cache cleanup: {e}")
     
     def cleanup_old_processes(self, days: int = 30) -> None:
         """Clean up processes older than specified days."""

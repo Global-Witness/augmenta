@@ -9,73 +9,79 @@ from pathlib import Path
 from augmenta.utils.get_hash import get_hash
 from .manager import CacheManager
 
-def handle_process_resumption(
+def get_cache_manager() -> CacheManager:
+    """Get the singleton cache manager instance."""
+    return CacheManager()
+
+def setup_cache_handling(
     config_data: Dict[str, Any],
     config_path: Path,
-    csv_path: Path,
-    no_cache: bool = False,
-    resume: Optional[str] = None,
-    no_auto_resume: bool = False,
-    cache_manager: Optional[Any] = None
-) -> Optional[str]:
-    """Handle process resumption logic."""
-    if resume or no_cache or no_auto_resume:
-        return resume
-        
-    if cache_manager is None:
-        cache_manager = CacheManager()
-        
-    config_hash = get_hash(config_data)
-    csv_hash = get_hash(csv_path)
-    combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
-    
-    if unfinished_process := cache_manager.find_unfinished_process(combined_hash):
-        summary = cache_manager.get_process_summary(unfinished_process)
-        click.echo(summary)
-        if click.confirm("Would you like to resume this process?"):
-            return unfinished_process.process_id
-            
-    return None
-
-def setup_caching(
-    config_data: Dict[str, Any],
-    csv_path: Path,
     cache_enabled: bool,
-    df_length: int,
-    process_id: Optional[str] = None,
-    cache_manager: Optional[Any] = None
-) -> Tuple[Optional[Any], Optional[str], Dict]:
-    """Set up caching for a process."""
+    process_id: Optional[str],
+    auto_resume: bool,
+    df: pd.DataFrame
+) -> Tuple[Optional[str], Optional[CacheManager], Dict[int, Any]]:
+    """Set up caching configuration.
+    
+    Args:
+        config_data: Configuration dictionary
+        config_path: Path to configuration file
+        cache_enabled: Whether caching is enabled
+        process_id: Optional process ID for resuming
+        auto_resume: Whether to auto-resume previous processes
+        df: Loaded DataFrame
+        
+    Returns:
+        Tuple of (process ID, cache manager, cached results)
+    """
     if not cache_enabled:
         return None, None, {}
         
-    if cache_manager is None:
-        cache_manager = CacheManager()
-        
-    config_hash = get_hash(config_data)
-    csv_hash = get_hash(csv_path)
-    combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
+    # Initialize cache manager once
+    cache_manager = get_cache_manager()
     
+    # Skip resumption if explicitly provided or disabled
+    if not process_id and auto_resume:
+        # Generate hash for config and input data
+        config_hash = get_hash(config_data)
+        csv_hash = get_hash(config_data["input_csv"])
+        combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
+        
+        # Check for unfinished process
+        if unfinished_process := cache_manager.find_unfinished_process(combined_hash):
+            summary = cache_manager.get_process_summary(unfinished_process)
+            click.echo(summary)
+            if click.confirm("Would you like to resume this process?"):
+                process_id = unfinished_process.process_id
+    
+    # Set up or resume process
     if not process_id:
-        process_id = cache_manager.start_process(combined_hash, df_length)
+        # Start new process
+        config_hash = get_hash(config_data)
+        csv_hash = get_hash(config_data["input_csv"])
+        combined_hash = get_hash({'config': config_hash, 'csv': csv_hash})
+        process_id = cache_manager.start_process(combined_hash, len(df))
     else:
+        # Update existing process
         with cache_manager.db.get_connection() as conn:
             conn.execute(
                 "UPDATE processes SET status = 'running', last_updated = ? WHERE process_id = ?",
                 (datetime.now(), process_id)
             )
-            
+    
+    # Get cached results
     cached_results = cache_manager.get_cached_results(process_id)
-    return cache_manager, process_id, cached_results
+    
+    return process_id, cache_manager, cached_results
 
 def apply_cached_results(
     df: pd.DataFrame,
     process_id: str,
-    cache_manager: Optional[Any] = None
+    cache_manager: Optional[CacheManager] = None
 ) -> pd.DataFrame:
     """Apply cached results to a DataFrame."""
     if cache_manager is None:
-        cache_manager = CacheManager()
+        cache_manager = get_cache_manager()
         
     cached_results = cache_manager.get_cached_results(process_id)
     for row_index, result in cached_results.items():
@@ -86,7 +92,7 @@ def apply_cached_results(
 def handle_cache_cleanup(cache_manager: Optional[Any] = None) -> None:
     """Clean up cache by removing the cache database file."""
     if cache_manager is None:
-        cache_manager = CacheManager()
+        cache_manager = get_cache_manager()
     
     try:
         # Ensure all pending writes are processed
