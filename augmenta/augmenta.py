@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Optional, Tuple, Dict, Any, Callable, Type, Union
 from dataclasses import dataclass
 
-from augmenta.utils.prompt_formatter import format_examples, format_prompt
+from augmenta.utils.prompt_formatter import format_examples, substitute_template_variables, build_complete_prompt
 from augmenta.agent import AugmentaAgent
 from augmenta.cache import CacheManager
 from augmenta.cache.process import setup_cache_handling, apply_cached_results
@@ -207,9 +207,8 @@ async def process_row(
     try:
         index = row_data['index']
         row = row_data['data']
-        
-        # Create prompt with data from row
-        prompt_user = create_formatted_prompt(config, row)
+          # Build complete prompt with data from row
+        prompt_user = build_complete_prompt(config, row)
         
         # Run prompt using the agent
         response = await agent.run(prompt_user, response_format=response_format)
@@ -229,26 +228,6 @@ async def process_row(
         logfire.error(f"Error processing row {index}: {str(e)}", row_index=index, error=str(e))
         return ProcessingResult(index=index, data=None, error=str(e))
 
-
-def create_formatted_prompt(config: Dict[str, Any], row: Dict[str, Any]) -> str:
-    """Create a formatted prompt using row data and examples.
-    
-    Args:
-        config: Configuration dictionary
-        row: Row data
-        
-    Returns:
-        Formatted prompt string
-    """
-    # Format the prompt with row data using string templating
-    prompt_user = format_prompt(config["prompt"]["user"], row)
-        
-    # Format examples if present
-    if examples_yaml := config.get("examples"):
-        if examples_text := format_examples(examples_yaml):
-            prompt_user = f'{prompt_user}\n\n{examples_text}'
-            
-    return prompt_user
 
 
 def handle_result_tracking(

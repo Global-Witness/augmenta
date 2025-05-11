@@ -97,17 +97,37 @@ def format_examples(examples_yaml: Union[str, list]) -> str:
     
     return format_xml(data, prefix="## Examples")
 
-def format_prompt(prompt_template: str, row_data: Dict[str, Any]) -> str:
-    """Format a prompt template by replacing placeholders with row data.
+def substitute_template_variables(prompt_template: str, row_data: Dict[str, Any]) -> str:
+    """Substitute variables in a prompt template with values from row data.
     
     Args:
         prompt_template: Prompt template with {{placeholder}} syntax
         row_data: Dictionary containing values to replace placeholders
         
     Returns:
-        Formatted prompt string
+        Formatted prompt string with variables substituted
     """
     formatted = prompt_template
     for column, value in row_data.items():
         formatted = formatted.replace(f"{{{{{column}}}}}", str(value))
     return formatted
+
+def build_complete_prompt(config: Dict[str, Any], row: Dict[str, Any]) -> str:
+    """Build a complete prompt by combining templated content with examples.
+    
+    Args:
+        config: Configuration dictionary containing prompt template and examples
+        row: Row data for variable substitution
+        
+    Returns:
+        Complete formatted prompt with variables substituted and examples appended
+    """
+    # Format the prompt with row data using string templating
+    prompt_user = substitute_template_variables(config["prompt"]["user"], row)
+        
+    # Format examples if present
+    if examples_yaml := config.get("examples"):
+        if examples_text := format_examples(examples_yaml):
+            prompt_user = f'{prompt_user}\n\n{examples_text}'
+            
+    return prompt_user
