@@ -1,6 +1,6 @@
 # Searching with Augmenta
 
-Augmenta supports several search engines out of the box. It will search for the `query_col` you specify, extract the links, and return the text from those links.
+Augmenta supports several search engines out of the box, with more available as [MCP servers](/docs/tools.md).
 
 Some search engines have a rate limit, meaning they will only allow a certain number of searches in a given time period. You can configure Augmenta to respect this rate limit by setting the `rate_limit` parameter in your configuration file.
 

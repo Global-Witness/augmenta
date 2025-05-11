@@ -119,6 +119,14 @@ class AugmentaAgent:
                 
         except (yaml.YAMLError, OSError) as e:
             raise ValueError(f"Failed to parse YAML: {e}")
+    
+    def get_mcp_servers_context(self):
+        """Get the MCP servers context manager from the underlying agent.
+        
+        Returns:
+            Context manager for running MCP servers
+        """
+        return self.agent.run_mcp_servers()
       
     async def run(
         self,
@@ -147,12 +155,12 @@ class AugmentaAgent:
             if temperature is not None and temperature != self.temperature:
                 model_settings = self._create_model_settings(temperature)
             
-            async with self.agent.run_mcp_servers():
-                result = await self.agent.run(
-                    prompt,
-                    output_type=response_format,
-                    model_settings=model_settings
-                )
+            # Note: MCP servers context should be managed at a higher level now
+            result = await self.agent.run(
+                prompt,
+                output_type=response_format,
+                model_settings=model_settings
+            )
 
             # Return the appropriate result format
             return result.data.model_dump() if response_format else result.data

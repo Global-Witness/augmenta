@@ -165,8 +165,10 @@ async def process_augmenta(
                 progress_callback=update_progress
             )
     
-    tasks = [process_with_limit(row) for row in rows_to_process]
-    results = await asyncio.gather(*tasks)
+    # Run all tasks under a single MCP server context
+    async with agent.get_mcp_servers_context():
+        tasks = [process_with_limit(row) for row in rows_to_process]
+        results = await asyncio.gather(*tasks)
 
     # Update DataFrame with results
     successful_results, error_count = update_dataframe_with_results(df, results)

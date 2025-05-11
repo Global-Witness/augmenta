@@ -4,7 +4,6 @@ agent: autonomous
 model:
   provider: openai
   name: gpt-4o-mini
-query_col: DonorName
 search:
   engine: duckduckgo
   results: 20

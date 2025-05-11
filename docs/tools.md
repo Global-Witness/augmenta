@@ -1,6 +1,6 @@
 # Tools
 
-By default, Augmenta has access to two tools: a search engine and a tool for retrieving text from the internet.
+By default, Augmenta has access to three tools: a search engine, a tool for retrieving text from the internet, and a tool for attaching local files.
 
 However, you may be interested in empowering it to do more. For example, you may want to give it access to a database, or give it the power to write code or do complex calculations.
 
@@ -35,3 +35,4 @@ GOOGLE_MAPS_API_KEY=XXXXX
 ```
 
 Augmenta will now have access to Google Maps. However, it will still have access to the default search tool, meaning it may decide to use it instead of the Google Maps server. You can explicitly tell the LLM to use the newly added tool in the prompts.
+

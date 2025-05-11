@@ -55,7 +55,6 @@ output_csv: data/donations_classified.csv
 model:
   name: openai/gpt-4o-mini
   max_tokens: 20000
-query_col: DonorName
 search:
   engine: brave
   country: GB
