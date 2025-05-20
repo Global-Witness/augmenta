@@ -4,20 +4,21 @@ model:
   provider: openai
   name: gpt-4o-mini
 search:
-  engine: duckduckgo
+  engine: brave
   results: 20
-mcpServers:
-  - name: fetch
-    command: uvx
-    args:
-      - mcp-server-fetch
+# mcpServers:
+#   - name: sequential-thinking
+#     command: npx
+#     args:
+#       - "-y"
+#       - "@modelcontextprotocol/server-sequential-thinking"
 prompt:
   system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
     # Instructions
 
     Your job is to research "{{DonorName}}", a donor to a political party in the UK. Your will determine what industry {{DonorName}} belongs to. The entity could be a company, a trade group, a union, an individual, etc.
-    
+
     If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
 
     We also know that the donor is a {{DonorStatus}}.
@@ -26,13 +27,10 @@ prompt:
 
     In most cases, you should start by searching for {{DonorName}} without any additional parameters. Where relevant, remove redundant words like "company", "limited", "plc", etc from the search query. If you need to perform another search, try to refine it by adding relevant keywords like "industry", "job", "company", etc. Note that each case will be different, so be flexible and adaptable. Unless necessary, limit your research to two or three searches.
 
-    With each search, select a few sources with `mcp-server-fetch-python` that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
-    
-    Now, please proceed with your analysis and classification of {{DonorName}}.    
+    With each search, select a few sources that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. Use the sequential thinking tool to think about your next steps. ALWAYS cite your sources.
+
+    Now, please proceed with your analysis and classification of {{DonorName}}.
 structure:
-  chain_of_thought:
-    type: str
-    description: Understand the task and make a complete plan to accomplish it. Explain your reasoning. Then, carry out the plan, think of potential issues that might come up, then show your answer. Assess your own answer, think of ways to improve it, and then show the improved answer.
   industry:
     type: str
     description: What industry is this organisation or person associated with?
@@ -63,19 +61,13 @@ structure:
   explanation:
     type: str
     description: A few paragraphs explaining your decision in English, formatted in Markdown. In the explanation, link to the most relevant sources from the provided documents. Include at least one inline URL.
-  sufficient_research:
-    type: bool
-    description: Have you analysed a sufficient number of search results to make an informed decision? Were the sources you found reliable and relevant?
-  confidence:
-    type: int
-    description: Your confidence level in the decision, on a scale of 1 (lowest) to 10 (highest). If you don't have enough information or the documents refer to different organisations that may share a name, please set this to 1.
 examples:
   - input: "Charles A Daniel-Hobbs"
     output:
       industry: Financial and insurance activities
       explanation: |
         According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
-        
+
         A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
       confidence: 2
   - input: "Unite the Union"
@@ -90,7 +82,7 @@ examples:
       explanation: |
         Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
 
-        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
+        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches.
       confidence: 10
   - input: "John Smith"
     output:
@@ -98,3 +90,4 @@ examples:
       explanation: |
         The documents about John Smith refer to multiple people (a [British polician](https://en.wikipedia.org/wiki/John_Smith_(Labour_Party_leader)), an [explorer](https://en.wikipedia.org/wiki/John_Smith_(explorer)), a [singer-songwriter](https://johnsmithjohnsmith.com/)), so there's no way to accurately assess what industry this particular individual belongs to.
       confidence: 1
+logfire: true

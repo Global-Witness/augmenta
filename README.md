@@ -1,4 +1,4 @@
-# augmenta
+# Augmenta
 
 [![lifecycle](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://www.tidyverse.org/lifecycle/#experimental)
 [![PyPI](https://img.shields.io/pypi/v/augmenta.svg)](https://pypi.org/project/augmenta/)
@@ -10,9 +10,9 @@ Augmenta is an AI agent for enhancing datasets with information from the interne
 
 ## Why?
 
-Large Language Models (LLMs) can be powerful tools for processing a lot of information very quickly. However, they don't do it entirely accurately. LLMs are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
+Large Language Models (LLMs) can be powerful tools for processing large volumes of information very quickly. However, they are prone to [hallucinations](https://en.wikipedia.org/wiki/Hallucination_(artificial_intelligence)), making them unreliable sources of truth, particularly when it comes to tasks that require domain-specific knowledge.
 
-Augmenta aims to address this shortcoming by allowing LLMs to search and browse the internet for information. This technique is known as "search-based [Retrieval-Augmented Generation (RAG)](https://en.wikipedia.org/wiki/Retrieval-augmented_generation)", or "[grounding](https://techcommunity.microsoft.com/blog/fasttrackforazureblog/grounding-llms/3843857)", and has been shown to significantly improve output quality. It does not, however, eliminate the risk of hallucinations entirely, so you should always verify the results before publishing them.
+Augmenta aims to address this shortcoming by "[grounding](https://techcommunity.microsoft.com/blog/fasttrackforazureblog/grounding-llms/3843857)" LLMs with information from the internet. This has been shown to significantly improve output quality. It does not, however, eliminate hallucinations entirely, so you should always verify the results before publishing them.
 
 ## Installation
 
@@ -23,15 +23,18 @@ Augmenta aims to address this shortcoming by allowing LLMs to search and browse 
 If you're using [uv](https://docs.astral.sh/uv/), open your terminal and run the following command to install Augmenta:
 
 ```bash
-uvx install git+https://github.com/Global-Witness/augmenta.git
+uvx install augmenta
 ```
 
 You may wish to do this in a virtual environment to avoid conflicts with other Python packages. This will limit Augmenta's scope to the current directory.
 
 ```bash
 uv venv
-source .venv/bin/activate # On Windows: .venv\Scripts\activate
-uv pip install git+https://github.com/Global-Witness/augmenta.git
+# on Linux/macOS
+source .venv/bin/activate
+# on Windows
+.venv\Scripts\activate
+uv pip install augmenta
 ```
 
 </details>
@@ -45,15 +48,18 @@ First, make sure you have Python 3.10 or later and [`pipx`](https://pipx.pypa.io
 Then, open your terminal and run the following command to install Augmenta:
 
 ```bash
-pipx install git+https://github.com/Global-Witness/augmenta.git
+pipx install augmenta
 ```
 
 You may wish to do this in a virtual environment to avoid conflicts with other Python packages. This will limit Augmenta's scope to the current directory.
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate # On Windows: .venv\Scripts\activate
-pip install git+https://github.com/Global-Witness/augmenta.git
+# on Linux/macOS
+source .venv/bin/activate
+# on Windows
+.venv\Scripts\activate
+pip install augmenta
 ```
 
 </details>
@@ -62,31 +68,36 @@ pip install git+https://github.com/Global-Witness/augmenta.git
 ## Usage
 
 > [!TIP]
-> If you would rather follow an example, [go here](https://github.com/Global-Witness/orcl?tab=readme-ov-file#augmenta).
+> If you would rather follow an example, [go here](https://github.com/Global-Witness/augmenta/tree/main/docs/examples/donations).
 
-Start by creating a new directory for your project. This will contain all your data, configuration files, as well as some temporary files that Augmenta will create while it runs.
+Each Augmenta project is a self-contained directory containing all the files needed to make it run:
 
-Copy the data you want processed into this directory (or a subdirectory). Augmenta currently supports CSV files in a [tidy format](https://research-hub.auckland.ac.nz/managing-research-data/organising-and-describing-data/tidy-data), where each row will contain an entity you want to process (eg. company), and each column will contain a different attribute of that entity (eg. industry, address, revenue, etc.).
+- **input data**: a CSV file in a [tidy format](https://research-hub.auckland.ac.nz/managing-research-data/organising-and-describing-data/tidy-data), where each row is an entity you want to process (eg. company), and each column is a different attribute of that entity (eg. industry, address, revenue, etc.)
+- **configuration file**: a YAML file that tells Augmenta how to process your data (see below)
+- **credentials**: a `.env` file containing your API keys (see below)
+- **cache**: Augmenta will automatically create some cache files while it runs, which you can ignore
+
 
 ### Configuration file
 
 The LLM needs instructions on how to process your data. Create a new file called `config.yaml` (you can change the name if you prefer) somewhere in your project directory and open it with a text editor. Copy this into it:
 
 ```yaml
-input_csv: path/to/original_data.csv
-output_csv: path/to/processed_data.csv
+input_csv: data/donations.csv
+output_csv: data/donations_classified.csv
 model:
   provider: openai
   name: gpt-4o-mini
 search:
-  engine: brightdata_google
+  engine: brave
+  results: 20
 prompt:
-  system: You are an expert researcher whose job is to classify organisations based on the industry they belong to.
+  system: You are an expert researcher whose job is to classify individuals and companies based on their industry.
   user: |
     # Instructions
 
     Your job is to research "{{DonorName}}", a donor to a political party in the UK. Your will determine what industry {{DonorName}} belongs to. The entity could be a company, a trade group, a union, an individual, etc.
-    
+
     If {{DonorName}} is an individual, you should classify them based on their profession or the industry they are closest associated with. If the documents are about multiple individuals, or if it's not clear which individual the documents refer to, please set the industry to "Don't know" and the confidence level to 1. For example, there's no way to know for certain that someone named "John Smith" in the documents is the same person as the donor in the Electoral Commission.
 
     We also know that the donor is a {{DonorStatus}}.
@@ -95,8 +106,8 @@ prompt:
 
     In most cases, you should start by searching for {{DonorName}} without any additional parameters. Where relevant, remove redundant words like "company", "limited", "plc", etc from the search query. If you need to perform another search, try to refine it by adding relevant keywords like "industry", "job", "company", etc. Note that each case will be different, so be flexible and adaptable. Unless necessary, limit your research to two or three searches.
 
-    With each search, select a few sources with `mcp-server-fetch-python` that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. ALWAYS cite your sources.
-    
+    With each search, select a few sources that are most likely to provide relevant information. Access them using the tools provided. Be critical and use common sense. Use the sequential thinking tool to think about your next steps. ALWAYS cite your sources.
+
     Now, please proceed with your analysis and classification of {{DonorName}}.
 structure:
   industry:
@@ -135,35 +146,40 @@ examples:
       industry: Financial and insurance activities
       explanation: |
         According to [the Wall Street Journal](https://www.wsj.com/market-data/quotes/SFNC/company-people/executive-profile/247375783), Mr. Charles Alexander DANIEL-HOBBS is the Chief Financial Officer and Executive Vice President of Simmons First National Corp, a bank holding company.
-        
+
         A Charles Alexander DANIEL-HOBBS also operates several companies, such as [DIBDEN PROPERTY LIMITED](https://find-and-update.company-information.service.gov.uk/company/10126637), which Companies House classifies as "Other letting and operating of own or leased real estate". However, the information is not clear on whether these are the same person.
+      confidence: 2
   - input: "Unite the Union"
     output:
       industry: Trade union
       explanation: |
         Unite is [one of the two largest trade unions in the UK](https://en.wikipedia.org/wiki/Unite_the_Union), with over 1.2 million members. It represents various industries, such as construction, manufacturing, transport, logistics and other sectors.
+      confidence: 7
   - input: "Google UK Limited"
     output:
       industry: Information and communication
       explanation: |
         Google UK Limited is a [subsidiary of Google LLC](https://about.google/intl/ALL_uk/google-in-uk/), a multinational technology company that specializes in Internet-related services and products.
 
-        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches. 
+        The company [provides various web based business services](https://www.bloomberg.com/profile/company/1200719Z:LN), including a web based search engine which includes various options such as web, image, directory, and news searches.
+      confidence: 10
   - input: "John Smith"
     output:
       industry: Don't know
       explanation: |
         The documents about John Smith refer to multiple people (a [British polician](https://en.wikipedia.org/wiki/John_Smith_(Labour_Party_leader)), an [explorer](https://en.wikipedia.org/wiki/John_Smith_(explorer)), a [singer-songwriter](https://johnsmithjohnsmith.com/)), so there's no way to accurately assess what industry this particular individual belongs to.
+      confidence: 1
+logfire: true
 ```
 
-You will need to edit this file to suit your project. Let's break all this down:
+You will need to adapt this configuration file to suit your project. Let's break it all this down:
 
-- `input_csv` and `output_csv` are the names of the data you want to process and where you want to save the results, respectively.
+- `input_csv` and `output_csv` are the paths to your original data and where you want to save the results, respectively.
 - `model`: The LLM you want to use. You can find a list of supported models [here](https://ai.pydantic.dev/models/). Note that you need to provide both a `provider` and model `name` (ie. `anthropic` and `claude-3.5-sonnet`). You will also likely need to set up an API key (see [credentials below](#credentials)).
 - `search`: The search engine you want to use. You can find a list of supported search engines [here](/docs/search.md). You will also likely need to set up an API key here (see [credentials](#credentials)).
 - `prompt`: LLMs take in a [system prompt](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/system-prompts) and a user prompt. Think of the system prompt as explaining to the LLM what its role is, and the user prompt as the instructions you want it to follow. You can use double curly braces (`{{ }}`) to refer to columns in your input CSV. Therea are some tips on writing good prompts [here](docs/prompt.md).
 - `structure`: The structure of the output data. You can think of this as the columns you want added to your original CSV.
-- `examples`: Examples of the output data. These will help the AI better understand what you're trying to do.
+- `examples` (optional): Examples of the output data. These will help the AI better understand what you're trying to do.
 
 ### Credentials
 
@@ -185,11 +201,11 @@ Make sure you have saved both your `config.yaml` and `.env` files. Open a **new*
 augmenta config.yaml
 ```
 
-It might be a few seconds before you see any output, but once it does, you will see a progress bar.
+It might be a few seconds before you see a progress bar.
 
 By default, Augmenta will save your progress so that you can resume if the process gets interrupted at any point. You can find options for working with the cache [here](docs/cache.md).
 
-Start with a subset of your data (5-10 rows) to test your configuration and that you are happy with the results. [Adjust your prompt often](docs/prompt.md). You can then rerun Augmenta on the full dataset.
+Start with a subset of your data (5-10 rows) to test your configuration and that you are happy with the results. [Adjust your prompt often](docs/prompt.md). You can then run Augmenta on the full dataset.
 
 #### Monitoring
 
@@ -203,7 +219,7 @@ Add `logfire: true` to your YAML and run Augmenta in verbose mode:
 augmenta -v config.yaml
 ```
 
-If everything is set up correctly, you should have a link to your logfire dashboard in the terminal. You will be able to monitor how Augmenta is running, which tools are using, any potential errors or inconsistencies, etc.
+If everything is set up correctly, you should have a link to your logfire dashboard in the terminal. You will be able to monitor how Augmenta is running, which tools it is using, any potential errors or inconsistencies, etc.
 
 ![Screenshot of a Logfire dashboard showing an Augmenta run](docs/logfire-demo.png "Logfire demo")
 
@@ -214,25 +230,3 @@ If everything is set up correctly, you should have a link to your logfire dashbo
 - [Writing a good prompt](/docs/prompt.md)
 - [How caching works](/docs/cache.md)
 - [An example in action](/docs/examples/donations/README.md)
-
-## Development
-
-Create a new virtual environment:
-
-```bash
-cd augmenta
-python -m venv .venv
-source .venv/bin/activate # On Windows: .venv\Scripts\activate
-```
-
-Now install the dependencies and test dependencies:
-
-```bash
-python -m pip install -e '.[test]'
-```
-
-To run the tests:
-
-```bash
-python -m pytest
-```
