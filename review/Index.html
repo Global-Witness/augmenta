@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      #data-container {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+      .data-row {
+        margin: 5px 0;
+      }
+      #notes {
+        width: 100%;
+        height: 100px;
+        margin: 10px 0;
+        padding: 8px;
+        box-sizing: border-box;
+      }
+      .button-container {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+        flex: 1;
+      }
+      .correct-btn { background: #4CAF50; color: white; }
+      .incorrect-btn { background: #f44336; color: white; }
+      .notsure-btn { background: #607D8B; color: white; }
+      .disabled { opacity: 0.6; cursor: not-allowed; }
+      #message {
+        margin-top: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+      }
+      .error { background: #ffebee; color: #c62828; }
+      .success { background: #e8f5e9; color: #2e7d32; }
+    </style>
+  </head>
+  <body>
+    <div id="data-container"></div>
+    <textarea id="notes" placeholder="Enter review notes here..."></textarea>
+    <div class="button-container">
+      <button class="correct-btn" onclick="submitReview('correct')">Correct</button>
+      <button class="incorrect-btn" onclick="submitReview('incorrect')">Incorrect</button>
+      <button class="notsure-btn" onclick="submitReview('not_sure')">Not Sure</button>
+    </div>
+    <div id="message"></div>
+    
+    <script>
+      let currentRow = null;
+      
+      // Load next row on page load
+      window.onload = loadNextRow;
+      
+      function loadNextRow() {
+        disableButtons(true);
+        google.script.run
+          .withSuccessHandler(displayRow)
+          .withFailureHandler(showError)
+          .getNextRow();
+      }
+      
+      function displayRow(result) {
+        if (!result) {
+          document.getElementById('data-container').innerHTML = 'No more rows to review.';
+          document.getElementById('notes').style.display = 'none';
+          return;
+        }
+        
+        currentRow = result.rowIndex;
+        const container = document.getElementById('data-container');
+        container.innerHTML = '';
+        
+        // Display each column except review-related ones
+        result.headers.forEach((header, index) => {
+          if (!header.startsWith('review_')) {
+            const value = result.data[index] || '';
+            container.innerHTML += `
+              <div class="data-row">
+                <strong>${header}:</strong> ${
+                  typeof value === 'string' ? marked.parse(value) : value
+                }
+              </div>
+            `;
+          }
+        });
+        
+        document.getElementById('notes').value = '';
+        disableButtons(false);
+      }
+      
+      function submitReview(decision) {
+        if (!currentRow) return;
+        
+        const notes = document.getElementById('notes').value;
+        disableButtons(true);
+        
+        google.script.run
+          .withSuccessHandler(() => {
+            showMessage('Review submitted successfully!', true);
+            loadNextRow();
+          })
+          .withFailureHandler(showError)
+          .submitReview(currentRow, decision, notes);
+      }
+      
+      function disableButtons(disabled) {
+        const buttons = document.getElementsByTagName('button');
+        for (let button of buttons) {
+          button.disabled = disabled;
+          button.classList.toggle('disabled', disabled);
+        }
+      }
+      
+      function showMessage(text, isSuccess) {
+        const msg = document.getElementById('message');
+        msg.textContent = text;
+        msg.style.display = 'block';
+        msg.className = isSuccess ? 'success' : 'error';
+        if (isSuccess) {
+          setTimeout(() => msg.style.display = 'none', 3000);
+        }
+      }
+      
+      function showError(error) {
+        showMessage(error.message || 'An error occurred', false);
+        disableButtons(false);
+      }
+    </script>
+  </body>
+</html>
